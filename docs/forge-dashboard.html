@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge • Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --primary: #3b82f6;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', system_ui, sans-serif;
+            font-weight: 600;
+        }
+
+        .forge-gradient {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+        }
+
+        .section-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -.025em;
+        }
+
+        .nav-active {
+            background-color: #1e2937;
+            color: white;
+            border-radius: 6px;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+        }
+
+        .metric-value {
+            font-size: 1.75rem;
+            line-height: 1;
+            font-weight: 700;
+        }
+
+        .session-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .session-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        .timeline-item {
+            position: relative;
+        }
+        
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 28px;
+            bottom: -4px;
+            width: 2px;
+            background-color: #334155;
+        }
+
+        .log-line {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875rem;
+        }
+
+        .artifact-card {
+            transition: transform 0.2s ease;
+        }
+        
+        .artifact-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .forge-modal {
+            animation: modalPop 0.2s ease forwards;
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .nav-item {
+            transition: all 0.1s ease;
+        }
+        
+        .nav-item:hover {
+            background-color: #1e2937;
+        }
+
+        .metric-card {
+            transition: transform 0.2s ease;
+        }
+
+        .live-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .agent-thinking {
+            animation: thinking 1.5s ease-in-out infinite;
+        }
+
+        .diff-line {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <!-- Top Navigation -->
+    <nav class="border-b border-slate-800 bg-slate-900">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-8 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-9 h-9 forge-gradient rounded-xl flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-hammer text-white text-2xl"></i>
+                        </div>
+                        <div>
+                            <span class="font-display text-2xl font-semibold tracking-tighter">Forge</span>
+                            <span class="text-xs text-slate-500 font-mono ml-1">v1.2</span>
+                        </div>
+                    </div>
+                    
+                    <div class="hidden md:flex items-center gap-x-1 ml-6 text-sm">
+                        <div class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-medium flex items-center gap-x-1.5">
+                            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                            <span>12,847 sessions today</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-x-4">
+                    <!-- User -->
+                    <div class="flex items-center gap-x-3">
+                        <div class="text-right">
+                            <div class="text-sm font-medium">Jawish Hameed</div>
+                            <div class="text-xs text-slate-500">Staff Engineer • Platform</div>
+                        </div>
+                        <img src="https://i.pravatar.cc/32?img=12" class="w-8 h-8 rounded-full ring-2 ring-slate-800" alt="Jawish">
+                    </div>
+                    
+                    <button onclick="showNotifications()" 
+                            class="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors relative">
+                        <i class="fa-solid fa-bell text-lg"></i>
+                        <div class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-2xl mx-auto flex">
+        <!-- Sidebar -->
+        <div class="w-60 border-r border-slate-800 bg-slate-900 min-h-[calc(100vh-65px)] p-3 hidden lg:block">
+            <div class="px-3 py-2">
+                <div class="text-xs font-semibold text-slate-500 tracking-widest px-3 mb-2">PLATFORM</div>
+                
+                <div onclick="navigateTo('dashboard')" class="nav-item nav-active flex items-center gap-x-3 px-3 py-2.5 text-sm cursor-pointer mb-1">
+                    <i class="fa-solid fa-home w-4"></i>
+                    <span>Dashboard</span>
+                </div>
+                
+                <div onclick="navigateTo('sessions')" class="nav-item flex items-center gap-x-3 px-3 py-2.5 text-sm text-slate-300 hover:text-white cursor-pointer mb-1">
+                    <i class="fa-solid fa-list-check w-4"></i>
+                    <span>All Sessions</span>
+                </div>
+                
+                <div onclick="navigateTo('analytics')" class="nav-item flex items-center gap-x-3 px-3 py-2.5 text-sm text-slate-300 hover:text-white cursor-pointer mb-1">
+                    <i class="fa-solid fa-chart-line w-4"></i>
+                    <span>Analytics</span>
+                </div>
+                
+                <div onclick="navigateTo('repos')" class="nav-item flex items-center gap-x-3 px-3 py-2.5 text-sm text-slate-300 hover:text-white cursor-pointer">
+                    <i class="fa-solid fa-folder w-4"></i>
+                    <span>Repo Settings</span>
+                </div>
+            </div>
+            
+            <div class="mt-6 px-3">
+                <div class="text-xs font-semibold text-slate-500 tracking-widest px-3 mb-2">QUICK ACTIONS</div>
+                <button onclick="showQuickStartModal()" 
+                        class="w-full flex items-center justify-center gap-x-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white text-sm font-medium py-2.5 rounded-xl">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>New Session</span>
+                </button>
+                
+                <button onclick="simulateSlackTrigger()" 
+                        class="mt-2 w-full flex items-center justify-center gap-x-2 bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 text-sm font-medium py-2.5 rounded-xl">
+                    <i class="fa-brands fa-slack"></i>
+                    <span>Simulate Slack Trigger</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8 max-w-screen-2xl">
+            
+            <!-- DASHBOARD VIEW -->
+            <div id="view-dashboard">
+                <div class="flex items-end justify-between mb-8">
+                    <div>
+                        <h1 class="text-4xl font-semibold tracking-tighter">Good evening, Jawish.</h1>
+                        <p class="text-slate-400 mt-1">76.4% of PRs this week were started in Forge</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-3">
+                        <div class="px-4 py-2 bg-slate-900 border border-slate-800 rounded-2xl text-sm flex items-center gap-x-2">
+                            <div class="flex -space-x-1">
+                                <img src="https://i.pravatar.cc/24?img=28" class="w-6 h-6 rounded-full ring-2 ring-slate-900">
+                                <img src="https://i.pravatar.cc/24?img=47" class="w-6 h-6 rounded-full ring-2 ring-slate-900">
+                                <img src="https://i.pravatar.cc/24?img=32" class="w-6 h-6 rounded-full ring-2 ring-slate-900">
+                            </div>
+                            <span class="text-xs text-slate-400">+184 online</span>
+                        </div>
+                        
+                        <button onclick="showQuickStartModal()" 
+                                class="px-5 py-2.5 bg-white text-slate-900 hover:bg-slate-100 transition-colors rounded-2xl text-sm font-semibold flex items-center gap-x-2 shadow-sm">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Start Session</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metrics Strip -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                    <div class="metric-card bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xs text-slate-500">Sessions today</div>
+                                <div class="metric-value text-white mt-1">2,847</div>
+                            </div>
+                            <i class="fa-solid fa-play text-emerald-400 text-xl mt-1"></i>
+                        </div>
+                        <div class="text-emerald-400 text-xs mt-3 flex items-center gap-x-1">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span>+18% from yesterday</span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xs text-slate-500">Conversion to PR</div>
+                                <div class="metric-value text-white mt-1">41.2%</div>
+                            </div>
+                            <i class="fa-solid fa-check-double text-blue-400 text-xl mt-1"></i>
+                        </div>
+                        <div class="text-emerald-400 text-xs mt-3">+4.1% this week</div>
+                    </div>
+                    
+                    <div class="metric-card bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xs text-slate-500">Avg time to PR</div>
+                                <div class="metric-value text-white mt-1">14m</div>
+                            </div>
+                            <i class="fa-solid fa-clock text-amber-400 text-xl mt-1"></i>
+                        </div>
+                        <div class="text-emerald-400 text-xs mt-3">-3m from last week</div>
+                    </div>
+                    
+                    <div class="metric-card bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xs text-slate-500">LLM spend / merged PR</div>
+                                <div class="metric-value text-white mt-1">$2.84</div>
+                            </div>
+                            <i class="fa-solid fa-dollar-sign text-emerald-400 text-xl mt-1"></i>
+                        </div>
+                        <div class="text-emerald-400 text-xs mt-3">-12% vs target</div>
+                    </div>
+                    
+                    <div class="metric-card bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-xs text-slate-500">Review Agent pass rate</div>
+                                <div class="metric-value text-white mt-1">87%</div>
+                            </div>
+                            <i class="fa-solid fa-shield-halved text-violet-400 text-xl mt-1"></i>
+                        </div>
+                        <div class="text-emerald-400 text-xs mt-3">+9% this month</div>
+                    </div>
+                </div>
+
+                <!-- Live Activity + Quick Start -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Live Humans -->
+                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-x-2">
+                                <span class="section-header">Live humans prompting</span>
+                                <span class="px-2 py-0.5 text-[10px] bg-emerald-500/10 text-emerald-400 rounded">184 online</span>
+                            </div>
+                            <button class="text-xs text-slate-400 hover:text-white flex items-center gap-x-1">
+                                <span>View all</span> <i class="fa-solid fa-arrow-right text-xs"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3 text-sm" id="live-humans">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <div class="section-header mb-4">Today's Highlights</div>
+                        
+                        <div class="space-y-4 text-sm">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-x-2">
+                                    <i class="fa-solid fa-check text-emerald-400"></i>
+                                    <span>184 PRs created</span>
+                                </div>
+                                <span class="font-mono text-emerald-400 text-xs">+31</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-x-2">
+                                    <i class="fa-solid fa-robot text-blue-400"></i>
+                                    <span>Review Buddy reviews</span>
+                                </div>
+                                <span class="font-mono text-blue-400 text-xs">1,204</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-x-2">
+                                    <i class="fa-solid fa-exclamation-triangle text-amber-400"></i>
+                                    <span>High priority automations</span>
+                                </div>
+                                <span class="font-mono text-amber-400 text-xs">47</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Sessions -->
+                <div class="mt-8">
+                    <div class="flex items-center justify-between mb-4 px-1">
+                        <span class="section-header">Recent Sessions</span>
+                        <button onclick="navigateTo('sessions')" class="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-x-1">
+                            View all sessions <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="recent-sessions">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- SESSIONS VIEW -->
+            <div id="view-sessions" class="hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-3xl font-semibold tracking-tight">All Sessions</h2>
+                        <p class="text-slate-400">Showing 2,847 sessions • Last 7 days</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-3">
+                        <div class="relative">
+                            <input type="text" id="session-search" placeholder="Search sessions..." 
+                                   class="bg-slate-900 border border-slate-700 focus:border-slate-600 transition-colors w-72 pl-10 py-2.5 rounded-2xl text-sm"
+                                   onkeyup="filterSessions()">
+                            <i class="fa-solid fa-search absolute left-4 top-3.5 text-slate-500"></i>
+                        </div>
+                        
+                        <select id="status-filter" onchange="filterSessions()" class="bg-slate-900 border border-slate-700 text-sm rounded-2xl px-4 py-2.5">
+                            <option value="">All statuses</option>
+                            <option value="running">Running</option>
+                            <option value="ready_for_pr">Ready for PR</option>
+                            <option value="merged">Merged</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 text-xs">
+                                <th class="text-left px-6 py-4 font-normal">Session</th>
+                                <th class="text-left px-4 py-4 font-normal">Repo</th>
+                                <th class="text-left px-4 py-4 font-normal">Started by</th>
+                                <th class="text-left px-4 py-4 font-normal">Duration</th>
+                                <th class="text-left px-4 py-4 font-normal">Status</th>
+                                <th class="text-left px-4 py-4 font-normal">Outcome</th>
+                                <th class="px-6 py-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessions-table-body" class="divide-y divide-slate-800">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ANALYTICS VIEW -->
+            <div id="view-analytics" class="hidden">
+                <h2 class="text-3xl font-semibold tracking-tight mb-6">Analytics &amp; Insights</h2>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Cost Trend -->
+                    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <div class="flex justify-between mb-4">
+                            <div>
+                                <div class="font-semibold">LLM Spend Trend</div>
+                                <div class="text-xs text-slate-500">Last 14 days • $42.8k total</div>
+                            </div>
+                            <div class="text-emerald-400 text-sm flex items-center gap-x-1">
+                                <i class="fa-solid fa-arrow-trend-down"></i>
+                                <span>-18% vs previous period</span>
+                            </div>
+                        </div>
+                        <canvas id="costChart" height="90"></canvas>
+                    </div>
+                    
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <div class="font-semibold mb-4">Top Failure Modes</div>
+                        <div class="space-y-4 text-sm">
+                            <div class="flex justify-between"><span class="text-slate-400">Tool timeout / rate limit</span> <span class="font-mono text-amber-400">34%</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Model hallucination on complex logic</span> <span class="font-mono text-amber-400">21%</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Test failures after edit</span> <span class="font-mono text-amber-400">18%</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Context too large</span> <span class="font-mono text-amber-400">12%</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPO SETTINGS VIEW -->
+            <div id="view-repos" class="hidden">
+                <div class="max-w-3xl">
+                    <h2 class="text-3xl font-semibold tracking-tight mb-2">Repo Settings</h2>
+                    <p class="text-slate-400 mb-8">Self-service configuration for per-repo sandbox images and tuning</p>
+                    
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <div class="font-semibold text-lg">frontend-monolith</div>
+                                <div class="text-xs text-emerald-400 flex items-center gap-x-1.5 mt-1">
+                                    <i class="fa-solid fa-check-circle"></i> 
+                                    <span>Last validated 4h ago • Warm start: 1.8s</span>
+                                </div>
+                            </div>
+                            <button onclick="showRepoWizard('frontend-monolith')" 
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-700 transition-colors rounded-2xl text-sm flex items-center gap-x-2">
+                                <i class="fa-solid fa-edit"></i>
+                                <span>Edit Configuration</span>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <div class="text-xs text-slate-500 mb-1">DEFAULT TOOLS</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span class="px-2.5 py-1 bg-slate-800 text-xs rounded-xl">rg</span>
+                                    <span class="px-2.5 py-1 bg-slate-800 text-xs rounded-xl">pnpm</span>
+                                    <span class="px-2.5 py-1 bg-slate-800 text-xs rounded-xl">vitest</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-500 mb-1">PREWARM</div>
+                                <div class="text-xs">mypy cache • node_modules • test DB</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-slate-500 mb-1">MCPs ENABLED</div>
+                                <div class="text-xs">Linear, Datadog, Feature Flags</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- SESSION DETAIL MODAL -->
+    <div id="session-detail-modal" onclick="if (event.target.id === 'session-detail-modal') closeSessionDetail()" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-3xl shadow-2xl max-h-[92vh] flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="px-8 py-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-x-4">
+                    <div>
+                        <div id="modal-session-id" class="font-mono text-sm text-slate-400"></div>
+                        <div id="modal-session-title" class="font-semibold text-xl"></div>
+                        <div id="modal-model-info" class="text-xs text-slate-400 mt-0.5 flex items-center gap-x-2">
+                            <!-- Populated by JS: model + cost + tokens -->
+                        </div>
+                    </div>
+                    <div id="modal-status-badge"></div>
+                </div>
+                
+                <div class="flex items-center gap-x-3">
+                    <div id="modal-multiplayer" class="flex items-center -space-x-1"></div>
+                    
+                    <div class="flex items-center gap-x-1 text-xs">
+                        <button onclick="showModelControls()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-x-1 text-slate-300">
+                            <i class="fa-solid fa-robot text-xs"></i>
+                            <span>Model</span>
+                        </button>
+                        <button onclick="inviteCollaborator()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center gap-x-1 text-slate-300">
+                            <i class="fa-solid fa-user-plus text-xs"></i>
+                            <span>Invite</span>
+                        </button>
+                    </div>
+                    
+                    <button onclick="closeSessionDetail()" 
+                            class="px-4 py-2 text-sm hover:bg-slate-800 transition-colors rounded-2xl flex items-center gap-x-2 text-slate-400 hover:text-white">
+                        <span>Close</span>
+                    </button>
+                    
+                    <button onclick="simulateLiveUpdate()" 
+                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 transition-colors text-sm font-medium rounded-2xl flex items-center gap-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Simulate Live</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex flex-1 overflow-hidden">
+                
+                <!-- Main Content -->
+                <div class="flex-1 flex flex-col">
+                    
+                    <!-- Tabs -->
+                    <div class="px-8 pt-4 border-b border-slate-800 flex gap-x-1">
+                        <button onclick="switchSessionTab('stream')" id="tab-stream"
+                                class="px-5 py-2 text-sm font-medium border-b-2 border-blue-500 text-white">Stream</button>
+                        <button onclick="switchSessionTab('artifacts')" id="tab-artifacts"
+                                class="px-5 py-2 text-sm font-medium text-slate-400 hover:text-white">Artifacts</button>
+                        <button onclick="switchSessionTab('timeline')" id="tab-timeline"
+                                class="px-5 py-2 text-sm font-medium text-slate-400 hover:text-white">Timeline &amp; Replay</button>
+                    </div>
+                    
+                    <!-- Stream Tab -->
+                    <div id="tab-content-stream" class="flex-1 p-8 overflow-auto">
+                        <div class="flex items-center gap-x-2 mb-4">
+                            <span class="font-semibold">Live Agent Activity</span>
+                            <span class="px-2.5 py-px text-[10px] bg-emerald-500/10 text-emerald-400 rounded">LIVE</span>
+                        </div>
+                        
+                        <div id="live-stream" class="space-y-3 text-sm font-light max-h-[420px] overflow-auto pr-2">
+                            <!-- Dynamic log lines -->
+                        </div>
+                    </div>
+                    
+                    <!-- Artifacts Tab -->
+                    <div id="tab-content-artifacts" class="hidden flex-1 p-8 overflow-auto">
+                        <div class="font-semibold mb-4">Generated Artifacts</div>
+                        <div id="artifacts-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Timeline / Replay Tab -->
+                    <div id="tab-content-timeline" class="hidden flex-1 p-8 overflow-auto">
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="font-semibold">Full Session Timeline</div>
+                            <button onclick="resetTimeline()" class="text-xs px-3 py-1 bg-slate-800 rounded-xl">Reset to live</button>
+                        </div>
+                        
+                        <div id="timeline-container" class="space-y-1 max-h-[380px] overflow-auto pr-4">
+                            <!-- Timeline items populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Sidebar -->
+                <div class="w-72 border-l border-slate-800 p-6 flex flex-col">
+                    <div>
+                        <div class="text-xs text-slate-500 mb-2">REPO</div>
+                        <div id="modal-repo" class="font-medium"></div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <div class="text-xs text-slate-500 mb-2">STARTED BY</div>
+                        <div class="flex items-center gap-x-2">
+                            <img id="modal-started-by-avatar" class="w-6 h-6 rounded-full">
+                            <div id="modal-started-by" class="text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Diagnostics / Time Breakdown (from observability requirements) -->
+                    <div class="mt-6">
+                        <div class="text-xs text-slate-500 mb-2 flex items-center justify-between">
+                            <span>DIAGNOSTICS</span>
+                            <button onclick="showDiagnosticsDetail()" class="text-[10px] text-blue-400 hover:underline">Details</button>
+                        </div>
+                        <div class="text-xs space-y-1 text-slate-400">
+                            <div class="flex justify-between"><span>Model TTFT</span> <span class="font-mono text-emerald-400">420ms</span></div>
+                            <div class="flex justify-between"><span>Tool p95 latency</span> <span class="font-mono text-emerald-400">680ms</span></div>
+                            <div class="flex justify-between"><span>Sandbox boot</span> <span class="font-mono text-emerald-400">1.8s</span></div>
+                            <div class="flex justify-between"><span>Context load</span> <span class="font-mono text-emerald-400">310ms</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto pt-6 border-t border-slate-800">
+                        <div class="text-xs text-slate-500 mb-3">ACTIONS</div>
+                        
+                        <button onclick="spawnSubSession()" 
+                                class="w-full mb-2 flex items-center justify-center gap-x-2 text-sm py-2.5 bg-slate-800 hover:bg-slate-700 transition-colors rounded-2xl">
+                            <i class="fa-solid fa-code-branch"></i>
+                            <span>Spawn Sub-Session</span>
+                        </button>
+                        
+                        <button onclick="openHostedVSCode()" 
+                                class="w-full mb-2 flex items-center justify-center gap-x-2 text-sm py-2.5 bg-slate-800 hover:bg-slate-700 transition-colors rounded-2xl">
+                            <i class="fa-solid fa-laptop-code"></i>
+                            <span>Open Hosted VS Code</span>
+                        </button>
+                        
+                        <button onclick="showPRPreviewModal()" 
+                                class="w-full flex items-center justify-center gap-x-2 text-sm py-2.5 bg-blue-600 hover:bg-blue-700 transition-colors rounded-2xl font-medium">
+                            <i class="fa-solid fa-git-pull-request"></i>
+                            <span>Create PR</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PR Preview Modal -->
+    <div id="pr-preview-modal" onclick="if (event.target.id === 'pr-preview-modal') closePRPreview()" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+        <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-3xl max-h-[90vh] flex flex-col">
+            <div class="px-8 py-5 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <span class="font-semibold">PR Preview</span>
+                    <span class="ml-3 text-xs px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full">Review Agent passed • 87%</span>
+                </div>
+                <button onclick="closePRPreview()" class="text-slate-400 hover:text-white">Close</button>
+            </div>
+            
+            <div class="p-8 flex-1 overflow-auto">
+                <div class="mb-6">
+                    <div class="font-medium">feat(checkout): Fix promo total calculation on mobile</div>
+                    <div class="text-sm text-slate-400 mt-1">Branch: <span class="font-mono">forge/jawish/session-7f3a2-fix-checkout</span></div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    <!-- Diff -->
+                    <div class="md:col-span-3">
+                        <div class="text-xs font-medium text-slate-400 mb-2">CHANGES (12 files)</div>
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs font-mono max-h-72 overflow-auto">
+                            <div class="diff-line text-emerald-400">+ 47 lines</div>
+                            <div class="diff-line text-rose-400">- 12 lines</div>
+                            <div class="mt-3 text-slate-400">... (simplified diff view)</div>
+                            <div class="mt-2 text-xs">src/components/Checkout.tsx</div>
+                            <div class="text-emerald-300">+ const total = calculatePromoTotal(items, promo);</div>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-2 space-y-4">
+                        <div>
+                            <div class="text-xs font-medium text-slate-400 mb-1.5">REVIEW AGENT CRITIQUE</div>
+                            <div class="text-xs bg-slate-950 border border-slate-800 rounded-2xl p-3 text-emerald-300">
+                                ✓ No security issues found<br>
+                                ✓ Test coverage increased to 94%<br>
+                                ✓ Performance regression avoided
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="text-xs font-medium text-slate-400 mb-1.5">VERIFICATION ARTIFACTS</div>
+                            <div class="text-xs">• All tests passing (142/142)<br>• Mobile screenshot verified<br>• Feature flag impact logged</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-8 py-5 border-t border-slate-800 flex items-center justify-between bg-slate-950 rounded-b-3xl">
+                <div class="text-xs text-slate-400">Policy: <span class="text-white">Explicit approval required</span></div>
+                
+                <div class="flex gap-x-3">
+                    <button onclick="closePRPreview()" class="px-5 py-2 text-sm hover:bg-slate-800 rounded-2xl">Cancel</button>
+                    <button onclick="createPR()" 
+                            class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 transition-colors text-sm font-semibold rounded-2xl flex items-center gap-x-2">
+                        <span>Create PR with my attribution</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#3b82f6');
+        }
+        
+        // Sample Data - matching enriched data model
+        let sampleData = {
+            repos: [
+                { id: "frontend-monolith", name: "frontend-monolith", github_url: "https://github.com/company/frontend-monolith" },
+                { id: "backend-api", name: "backend-api", github_url: "https://github.com/company/backend-api" },
+                { id: "infra-terraform", name: "infra-terraform", github_url: "https://github.com/company/infra-terraform" },
+                { id: "checkout-service", name: "checkout-service", github_url: "https://github.com/company/checkout-service" }
+            ],
+            
+            sessions: [
+                {
+                    id: "sess-7f3a2",
+                    repo_id: "frontend-monolith",
+                    branch: "forge/jawish/session-7f3a2-fix-checkout",
+                    status: "ready_for_pr",
+                    created_by_user_id: "jawish",
+                    created_at: "2026-06-21T14:12:00Z",
+                    ended_at: null,
+                    outcome: null,
+                    total_cost_usd: 3.12,
+                    total_tokens_in: 18420,
+                    total_tokens_out: 1240,
+                    primary_model: "claude-4-sonnet",
+                    pr_url: null,
+                    pr_number: null,
+                    participants: ["jawish", "maya"],
+                    parent_session_id: null
+                },
+                {
+                    id: "sess-9b2c1",
+                    repo_id: "backend-api",
+                    branch: "forge/sarah/session-9b2c1-add-logging",
+                    status: "merged",
+                    created_by_user_id: "sarah",
+                    created_at: "2026-06-20T09:45:00Z",
+                    ended_at: "2026-06-20T10:18:00Z",
+                    outcome: "merged",
+                    total_cost_usd: 1.84,
+                    total_tokens_in: 9200,
+                    total_tokens_out: 680,
+                    primary_model: "gpt-5.5-medium",
+                    pr_url: "https://github.com/company/backend-api/pull/1842",
+                    pr_number: 1842,
+                    participants: ["sarah"]
+                },
+                {
+                    id: "sess-4d8e3",
+                    repo_id: "checkout-service",
+                    branch: "forge/jawish/session-4d8e3-promo-fix",
+                    status: "running",
+                    created_by_user_id: "jawish",
+                    created_at: "2026-06-21T16:45:00Z",
+                    ended_at: null,
+                    outcome: null,
+                    total_cost_usd: 1.21,
+                    total_tokens_in: 6120,
+                    total_tokens_out: 430,
+                    primary_model: "claude-4-sonnet",
+                    participants: ["jawish", "devin"]
+                },
+                {
+                    id: "sess-2f1a9",
+                    repo_id: "infra-terraform",
+                    branch: "forge/alex/session-2f1a9-tf-plan",
+                    status: "merged",
+                    created_by_user_id: "alex",
+                    created_at: "2026-06-19T11:20:00Z",
+                    ended_at: "2026-06-19T11:55:00Z",
+                    outcome: "merged",
+                    total_cost_usd: 0.92,
+                    total_tokens_in: 4800,
+                    total_tokens_out: 310,
+                    primary_model: "gpt-5.5-medium",
+                    pr_url: "https://github.com/company/infra-terraform/pull/312",
+                    pr_number: 312,
+                    participants: ["alex"]
+                }
+            ],
+            
+            prompts: [
+                { id: "p1", session_id: "sess-7f3a2", user_id: "jawish", prompt_type: "user", content: "Fix the promo total calculation bug on mobile checkout. The total is wrong when promo is applied.", ts: "2026-06-21T14:12:05Z" },
+                { id: "p2", session_id: "sess-7f3a2", user_id: "agent", prompt_type: "agent_internal", content: "Reading recent changes to checkout components...", ts: "2026-06-21T14:12:12Z" }
+            ],
+            
+            tool_calls: [
+                { id: "t1", session_id: "sess-7f3a2", tool_name: "rg", args: { pattern: "promo.*total" }, result: "Found 14 matches in src/components/Checkout.tsx", duration_ms: 180, tokens_in: 120, tokens_out: 45, status: "success", ts: "2026-06-21T14:12:18Z" },
+                { id: "t2", session_id: "sess-7f3a2", tool_name: "read_file", args: { path: "src/components/Checkout.tsx" }, result: "File content loaded", duration_ms: 420, tokens_in: 890, tokens_out: 1240, status: "success", ts: "2026-06-21T14:12:25Z" }
+            ],
+            
+            artifacts: [
+                { id: "a1", session_id: "sess-7f3a2", type: "diff", storage_uri: "#", metadata: { files_changed: 12, additions: 47, deletions: 12 } },
+                { id: "a2", session_id: "sess-7f3a2", type: "screenshot", storage_uri: "#", metadata: { description: "Before/After mobile checkout" } },
+                { id: "a3", session_id: "sess-7f3a2", type: "test_result", storage_uri: "#", metadata: { passed: 142, failed: 0 } },
+                { id: "a4", session_id: "sess-7f3a2", type: "review_critique", storage_uri: "#", metadata: { score: 87, issues: 0 } }
+            ]
+        }
+        
+        let currentSession = null
+        let currentTimelineIndex = 0
+        let liveUpdateInterval = null
+        
+        // Initialize everything
+        function initializeDashboard() {
+            initializeTailwind()
+            renderRecentSessions()
+            renderLiveHumans()
+            renderAllSessionsTable()
+            initializeCostChart()
+            
+            // Show dashboard by default
+            document.getElementById('view-dashboard').classList.remove('hidden')
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.metaKey && e.key === "/") {
+                    e.preventDefault()
+                    showQuickStartModal()
+                }
+            })
+            
+            // Demo tip
+            setTimeout(() => {
+                const tip = document.createElement('div')
+                tip.className = 'fixed bottom-6 right-6 bg-slate-900 border border-slate-700 text-xs px-4 py-2 rounded-2xl shadow-xl flex items-center gap-x-2'
+                tip.innerHTML = `
+                    <span>Tip: Click any session card to explore full detail + replay</span>
+                    <button onclick="this.parentElement.remove()" class="text-slate-500 hover:text-white">×</button>
+                `
+                document.body.appendChild(tip)
+                
+                setTimeout(() => {
+                    if (tip.parentElement) tip.parentElement.removeChild(tip)
+                }, 6500)
+            }, 4200)
+        }
+        
+        function navigateTo(view) {
+            // Hide all views
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'))
+            
+            // Show selected
+            const target = document.getElementById('view-' + view)
+            if (target) target.classList.remove('hidden')
+            
+            // Special handling
+            if (view === 'sessions') {
+                renderAllSessionsTable()
+            }
+        }
+        
+        function renderRecentSessions() {
+            const container = document.getElementById('recent-sessions')
+            container.innerHTML = ''
+            
+            const recent = sampleData.sessions.slice(0, 4)
+            
+            recent.forEach(session => {
+                const repo = sampleData.repos.find(r => r.id === session.repo_id)
+                
+                const div = document.createElement('div')
+                div.className = `session-card bg-slate-900 border border-slate-800 rounded-3xl p-5 cursor-pointer hover:border-slate-700`
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-mono text-xs text-slate-500">${session.id}</div>
+                            <div class="font-medium mt-1">${repo ? repo.name : session.repo_id}</div>
+                        </div>
+                        <div class="text-right">
+                            ${getStatusBadge(session.status)}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 flex items-center justify-between text-xs">
+                        <div class="text-slate-400">${session.created_by_user_id}</div>
+                        <div class="font-mono text-emerald-400">$${session.total_cost_usd}</div>
+                    </div>
+                `
+                
+                div.onclick = () => showSessionDetail(session.id)
+                container.appendChild(div)
+            })
+        }
+        
+        function getStatusBadge(status) {
+            let color = 'bg-slate-700 text-slate-300'
+            let label = status
+            
+            if (status === 'running') {
+                color = 'bg-emerald-500/10 text-emerald-400'
+                label = 'Running'
+            } else if (status === 'ready_for_pr') {
+                color = 'bg-blue-500/10 text-blue-400'
+                label = 'Ready for PR'
+            } else if (status === 'merged') {
+                color = 'bg-emerald-500/10 text-emerald-400'
+                label = 'Merged'
+            } else if (status === 'failed') {
+                color = 'bg-rose-500/10 text-rose-400'
+                label = 'Failed'
+            }
+            
+            return `<span class="status-badge ${color}">${label}</span>`
+        }
+        
+        function renderLiveHumans() {
+            const container = document.getElementById('live-humans')
+            container.innerHTML = ''
+            
+            const humans = [
+                { name: "Maya Patel", action: "Investigating checkout bug in frontend-monolith", time: "just now" },
+                { name: "Devin Chen", action: "Reviewing Terraform changes", time: "2m ago" },
+                { name: "Sarah Kim", action: "Adding observability to backend-api", time: "8m ago" }
+            ]
+            
+            humans.forEach(h => {
+                const div = document.createElement('div')
+                div.className = 'flex items-center gap-x-3 text-sm py-1'
+                div.innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-slate-700 flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between">
+                            <span class="font-medium">${h.name}</span>
+                            <span class="text-xs text-slate-500">${h.time}</span>
+                        </div>
+                        <div class="text-xs text-slate-400 truncate">${h.action}</div>
+                    </div>
+                `
+                container.appendChild(div)
+            })
+        }
+        
+        function renderAllSessionsTable(filteredSessions = null) {
+            const tbody = document.getElementById('sessions-table-body')
+            tbody.innerHTML = ''
+            
+            const sessionsToShow = filteredSessions || sampleData.sessions
+            
+            sessionsToShow.forEach(session => {
+                const repo = sampleData.repos.find(r => r.id === session.repo_id) || { name: session.repo_id }
+                
+                const row = document.createElement('tr')
+                row.className = 'hover:bg-slate-800/50 cursor-pointer'
+                row.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="font-mono text-xs text-slate-400">${session.id}</div>
+                        <div class="font-medium">${session.branch}</div>
+                    </td>
+                    <td class="px-4 py-4 text-sm">${repo.name}</td>
+                    <td class="px-4 py-4 text-sm">${session.created_by_user_id}</td>
+                    <td class="px-4 py-4 text-sm font-mono">${session.ended_at ? 'finished' : 'running'}</td>
+                    <td class="px-4 py-4">${getStatusBadge(session.status)}</td>
+                    <td class="px-4 py-4 text-sm">
+                        ${session.outcome ? `<span class="text-emerald-400">${session.outcome}</span>` : 
+                          session.pr_url ? `<a href="${session.pr_url}" class="text-blue-400 hover:underline">PR #${session.pr_number}</a>` : 
+                          '—'}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="event.stopImmediatePropagation(); showSessionDetail('${session.id}')" 
+                                class="text-xs px-4 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl">View</button>
+                    </td>
+                `
+                row.onclick = () => showSessionDetail(session.id)
+                tbody.appendChild(row)
+            })
+        }
+        
+        function filterSessions() {
+            const search = document.getElementById('session-search').value.toLowerCase()
+            const statusFilter = document.getElementById('status-filter').value
+            
+            const filtered = sampleData.sessions.filter(s => {
+                const matchesSearch = s.id.toLowerCase().includes(search) || 
+                                     s.branch.toLowerCase().includes(search) ||
+                                     s.created_by_user_id.toLowerCase().includes(search)
+                
+                const matchesStatus = !statusFilter || s.status === statusFilter
+                
+                return matchesSearch && matchesStatus
+            })
+            
+            renderAllSessionsTable(filtered)
+        }
+        
+        function showSessionDetail(sessionId) {
+            currentSession = sampleData.sessions.find(s => s.id === sessionId)
+            if (!currentSession) return
+            
+            // Populate header
+            document.getElementById('modal-session-id').innerText = currentSession.id
+            document.getElementById('modal-session-title').innerText = currentSession.branch.split('/').pop()
+            document.getElementById('modal-repo').innerText = currentSession.repo_id
+            
+            const startedBy = currentSession.created_by_user_id
+            document.getElementById('modal-started-by').innerText = startedBy
+            document.getElementById('modal-started-by-avatar').src = `https://i.pravatar.cc/24?img=${startedBy.length}`
+            
+            // Enriched model info from data model
+            const modelInfo = document.getElementById('modal-model-info')
+            modelInfo.innerHTML = `
+                <span class="font-mono">${currentSession.primary_model || 'claude-4-sonnet'}</span> 
+                <span class="text-slate-500">•</span> 
+                <span class="text-emerald-400">$${currentSession.total_cost_usd || '0.00'}</span>
+                <span class="text-slate-500">•</span> 
+                <span>${(currentSession.total_tokens_in || 0).toLocaleString()} tokens</span>
+            `
+            
+            // Status badge
+            const statusContainer = document.getElementById('modal-status-badge')
+            statusContainer.innerHTML = getStatusBadge(currentSession.status)
+            
+            // Multiplayer
+            const mpContainer = document.getElementById('modal-multiplayer')
+            mpContainer.innerHTML = ''
+            currentSession.participants.forEach((p, i) => {
+                const img = document.createElement('img')
+                img.src = `https://i.pravatar.cc/24?img=${i + 10}`
+                img.className = 'w-6 h-6 rounded-full ring-2 ring-slate-900'
+                mpContainer.appendChild(img)
+            })
+            
+            // Reset tabs
+            switchSessionTab('stream')
+            
+            // Show modal
+            document.getElementById('session-detail-modal').classList.remove('hidden')
+            document.getElementById('session-detail-modal').classList.add('flex')
+            
+            // Load initial stream
+            loadInitialStream()
+        }
+        
+        function closeSessionDetail() {
+            document.getElementById('session-detail-modal').classList.remove('flex')
+            document.getElementById('session-detail-modal').classList.add('hidden')
+            
+            if (liveUpdateInterval) {
+                clearInterval(liveUpdateInterval)
+                liveUpdateInterval = null
+            }
+        }
+        
+        function switchSessionTab(tab) {
+            // Hide all
+            document.getElementById('tab-content-stream').classList.add('hidden')
+            document.getElementById('tab-content-artifacts').classList.add('hidden')
+            document.getElementById('tab-content-timeline').classList.add('hidden')
+            
+            // Deactivate tabs
+            document.getElementById('tab-stream').classList.remove('border-blue-500', 'text-white')
+            document.getElementById('tab-stream').classList.add('text-slate-400')
+            document.getElementById('tab-artifacts').classList.remove('border-blue-500', 'text-white')
+            document.getElementById('tab-artifacts').classList.add('text-slate-400')
+            document.getElementById('tab-timeline').classList.remove('border-blue-500', 'text-white')
+            document.getElementById('tab-timeline').classList.add('text-slate-400')
+            
+            if (tab === 'stream') {
+                document.getElementById('tab-content-stream').classList.remove('hidden')
+                document.getElementById('tab-stream').classList.add('border-blue-500', 'text-white')
+                document.getElementById('tab-stream').classList.remove('text-slate-400')
+            } else if (tab === 'artifacts') {
+                document.getElementById('tab-content-artifacts').classList.remove('hidden')
+                document.getElementById('tab-artifacts').classList.add('border-blue-500', 'text-white')
+                document.getElementById('tab-artifacts').classList.remove('text-slate-400')
+                renderArtifacts()
+            } else if (tab === 'timeline') {
+                document.getElementById('tab-content-timeline').classList.remove('hidden')
+                document.getElementById('tab-timeline').classList.add('border-blue-500', 'text-white')
+                document.getElementById('tab-timeline').classList.remove('text-slate-400')
+                renderTimeline()
+            }
+        }
+        
+        function loadInitialStream() {
+            const container = document.getElementById('live-stream')
+            container.innerHTML = ''
+            
+            const initialLogs = [
+                { type: 'thinking', text: 'Analyzing the promo calculation logic in Checkout.tsx...' },
+                { type: 'tool', text: 'Running rg "promo.*total" in src/' },
+                { type: 'result', text: 'Found mismatch in mobile media query calculation' }
+            ]
+            
+            initialLogs.forEach(log => {
+                addLogLine(container, log)
+            })
+            
+            // Simulate more activity if running
+            if (currentSession.status === 'running') {
+                setTimeout(() => {
+                    if (!container.closest('#session-detail-modal.hidden')) {
+                        addLogLine(container, { type: 'thinking', text: 'Reproducing the bug in sandbox...' })
+                    }
+                }, 1800)
+            }
+        }
+        
+        function addLogLine(container, log) {
+            const div = document.createElement('div')
+            div.className = `log-line flex gap-x-3 items-start py-1 ${log.type === 'thinking' ? 'text-slate-300' : log.type === 'tool' ? 'text-blue-300' : 'text-emerald-300' }`
+            
+            let icon = ''
+            if (log.type === 'thinking') icon = '<i class="fa-solid fa-brain mt-1 w-4"></i>'
+            else if (log.type === 'tool') icon = '<i class="fa-solid fa-terminal mt-1 w-4"></i>'
+            else icon = '<i class="fa-solid fa-check mt-1 w-4"></i>'
+            
+            div.innerHTML = `
+                <div class="w-4 flex-shrink-0">${icon}</div>
+                <div class="flex-1">${log.text}</div>
+                <div class="text-[10px] text-slate-500 font-mono flex-shrink-0 mt-0.5">${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+            `
+            container.appendChild(div)
+            container.scrollTop = container.scrollHeight
+        }
+        
+        function simulateLiveUpdate() {
+            const container = document.getElementById('live-stream')
+            if (!container) return
+            
+            const steps = [
+                { type: 'thinking', text: 'Found root cause: incorrect mobile media query for promo banner' },
+                { type: 'tool', text: 'Applying fix to Checkout.tsx...' },
+                { type: 'result', text: 'Running tests...' },
+                { type: 'result', text: 'All tests passing ✓' }
+            ]
+            
+            let i = 0
+            const interval = setInterval(() => {
+                if (i >= steps.length || container.closest('#session-detail-modal.hidden')) {
+                    clearInterval(interval)
+                    return
+                }
+                addLogLine(container, steps[i])
+                i++
+            }, 1100)
+        }
+        
+        function renderArtifacts() {
+            const container = document.getElementById('artifacts-grid')
+            container.innerHTML = ''
+            
+            const sessionArtifacts = sampleData.artifacts.filter(a => a.session_id === currentSession.id)
+            
+            if (sessionArtifacts.length === 0) {
+                container.innerHTML = `<div class="col-span-3 text-center py-8 text-slate-500 text-sm">No artifacts generated yet</div>`
+                return
+            }
+            
+            sessionArtifacts.forEach(artifact => {
+                const div = document.createElement('div')
+                div.className = `artifact-card bg-slate-950 border border-slate-700 rounded-2xl p-4 text-sm`
+                
+                let content = ''
+                if (artifact.type === 'diff') {
+                    content = `<div class="font-mono text-xs">+${artifact.metadata.additions} / -${artifact.metadata.deletions} lines</div>`
+                } else if (artifact.type === 'screenshot') {
+                    content = `<div class="text-xs">📸 Mobile checkout screenshot</div>`
+                } else if (artifact.type === 'test_result') {
+                    content = `<div class="text-emerald-400">✓ ${artifact.metadata.passed} tests passing</div>`
+                } else if (artifact.type === 'review_critique') {
+                    content = `<div class="text-emerald-400">Review Agent: ${artifact.metadata.score}% pass</div>`
+                }
+                
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-medium capitalize">${artifact.type.replace('_', ' ')}</div>
+                            <div class="mt-2">${content}</div>
+                        </div>
+                    </div>
+                `
+                container.appendChild(div)
+            })
+        }
+        
+        function renderTimeline() {
+            const container = document.getElementById('timeline-container')
+            container.innerHTML = ''
+            
+            // Build timeline from prompts + tool calls
+            const events = []
+            
+            // Add prompts
+            sampleData.prompts.filter(p => p.session_id === currentSession.id).forEach(p => {
+                events.push({
+                    ts: p.ts,
+                    type: 'prompt',
+                    actor: p.user_id,
+                    content: p.content.substring(0, 80) + (p.content.length > 80 ? '...' : '')
+                })
+            })
+            
+            // Add tool calls
+            sampleData.tool_calls.filter(t => t.session_id === currentSession.id).forEach(t => {
+                events.push({
+                    ts: t.ts,
+                    type: 'tool',
+                    actor: 'agent',
+                    content: `${t.tool_name} • ${t.duration_ms}ms`
+                })
+            })
+            
+            // Sort by time
+            events.sort((a, b) => new Date(a.ts) - new Date(b.ts))
+            
+            events.forEach((event, index) => {
+                const div = document.createElement('div')
+                div.className = `timeline-item flex gap-x-4 text-sm py-2 cursor-pointer hover:bg-slate-800 px-3 rounded-xl`
+                div.innerHTML = `
+                    <div class="w-6 flex-shrink-0 pt-1">
+                        <div class="w-3 h-3 rounded-full ${event.type === 'prompt' ? 'bg-blue-500' : 'bg-emerald-500'}"></div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <span class="font-medium">${event.actor}</span>
+                            <span class="font-mono text-xs text-slate-500">${new Date(event.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                        </div>
+                        <div class="text-slate-400 text-xs mt-0.5">${event.content}</div>
+                    </div>
+                `
+                
+                div.onclick = () => {
+                    // Simulate jumping to this point in replay
+                    alert(`Replaying from step ${index + 1} (demo)`)
+                }
+                
+                container.appendChild(div)
+            })
+            
+            if (events.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-500">No timeline events yet</div>`
+            }
+        }
+        
+        function resetTimeline() {
+            renderTimeline()
+        }
+        
+        function spawnSubSession() {
+            const modal = document.getElementById('session-detail-modal')
+            modal.classList.add('hidden')
+            
+            setTimeout(() => {
+                alert("Sub-session spawned successfully!\n\nNew session ID: sess-8c4d1\nParent: " + currentSession.id + "\n\n(In real app this would open a new session detail view)")
+                modal.classList.remove('hidden')
+            }, 300)
+        }
+        
+        function showPRPreviewModal() {
+            document.getElementById('session-detail-modal').classList.add('hidden')
+            document.getElementById('pr-preview-modal').classList.remove('hidden')
+            document.getElementById('pr-preview-modal').classList.add('flex')
+        }
+        
+        function closePRPreview() {
+            document.getElementById('pr-preview-modal').classList.remove('flex')
+            document.getElementById('pr-preview-modal').classList.add('hidden')
+            
+            // Reopen session detail
+            setTimeout(() => {
+                document.getElementById('session-detail-modal').classList.remove('hidden')
+                document.getElementById('session-detail-modal').classList.add('flex')
+            }, 150)
+        }
+        
+        function createPR() {
+            document.getElementById('pr-preview-modal').classList.remove('flex')
+            document.getElementById('pr-preview-modal').classList.add('hidden')
+            
+            // Update session
+            if (currentSession) {
+                currentSession.status = 'merged'
+                currentSession.outcome = 'merged'
+                currentSession.pr_number = Math.floor(Math.random() * 900) + 1800
+                currentSession.pr_url = `https://github.com/company/${currentSession.repo_id}/pull/${currentSession.pr_number}`
+            }
+            
+            setTimeout(() => {
+                alert(`PR #${currentSession.pr_number} created successfully!\n\nSession linked in PR description.\nHuman review + CI required as usual.`)
+                
+                // Refresh views
+                renderRecentSessions()
+                renderAllSessionsTable()
+                
+                // Reopen detail
+                document.getElementById('session-detail-modal').classList.remove('hidden')
+                document.getElementById('session-detail-modal').classList.add('flex')
+            }, 400)
+        }
+        
+        function showQuickStartModal() {
+            const modalHTML = `
+                <div id="quickstart-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onclick="document.getElementById('quickstart-modal').remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8">
+                        <div class="font-semibold text-xl mb-1">Start new Forge session</div>
+                        <div class="text-sm text-slate-400 mb-6">Describe what you want to build or fix</div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs text-slate-400">Repository</label>
+                                <select id="qs-repo" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm mt-1">
+                                    ${sampleData.repos.map(r => `<option value="${r.id}">${r.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="text-xs text-slate-400">What should Forge do?</label>
+                                <textarea id="qs-prompt" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm mt-1" 
+                                    placeholder="Fix the mobile promo total calculation bug in checkout..."></textarea>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs text-slate-400">Model</label>
+                                    <select id="qs-model" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-2.5 text-sm mt-1">
+                                        <option value="claude-4-sonnet">claude-4-sonnet (recommended)</option>
+                                        <option value="gpt-5.5-medium">gpt-5.5-medium</option>
+                                        <option value="claude-4-opus">claude-4-opus (high quality)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-400">Est. Cost</label>
+                                    <div id="qs-cost-estimate" class="mt-1 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-2xl text-sm font-mono text-emerald-400">$0.8 – $1.6</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-x-3 pt-3">
+                                <button onclick="document.getElementById('quickstart-modal').remove()" 
+                                        class="flex-1 py-3 text-sm bg-slate-800 hover:bg-slate-700 rounded-2xl">Cancel</button>
+                                <button onclick="startNewSessionFromModal()" 
+                                        class="flex-1 py-3 text-sm bg-blue-600 hover:bg-blue-700 rounded-2xl font-medium">Start Session</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+            document.body.insertAdjacentHTML('beforeend', modalHTML)
+        }
+        
+        function startNewSessionFromModal() {
+            const repoId = document.getElementById('qs-repo').value
+            const prompt = document.getElementById('qs-prompt').value || "Investigate and fix the issue"
+            const model = document.getElementById('qs-model').value
+            
+            document.getElementById('quickstart-modal').remove()
+            
+            // Create new session
+            const newSession = {
+                id: "sess-" + Math.random().toString(36).substring(2, 7),
+                repo_id: repoId,
+                branch: `forge/jawish/session-${Math.random().toString(36).substring(2, 7)}`,
+                status: "running",
+                created_by_user_id: "jawish",
+                created_at: new Date().toISOString(),
+                ended_at: null,
+                outcome: null,
+                total_cost_usd: 0.45,
+                total_tokens_in: 1240,
+                total_tokens_out: 180,
+                primary_model: model,
+                participants: ["jawish"]
+            }
+            
+            sampleData.sessions.unshift(newSession)
+            
+            // Show success + open detail
+            setTimeout(() => {
+                showSessionDetail(newSession.id)
+                
+                // Add initial log
+                setTimeout(() => {
+                    const container = document.getElementById('live-stream')
+                    if (container) {
+                        addLogLine(container, { type: 'thinking', text: `Starting work on: ${prompt}` })
+                    }
+                }, 800)
+            }, 600)
+        }
+        
+        function simulateSlackTrigger() {
+            const modalHTML = `
+                <div id="slack-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onclick="document.getElementById('slack-modal').remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl overflow-hidden">
+                        <div class="px-6 py-4 bg-[#4A154B] flex items-center gap-x-3">
+                            <i class="fa-brands fa-slack text-white text-xl"></i>
+                            <span class="font-semibold text-white">#eng-bugs</span>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div class="text-sm mb-4">Maya posted 3m ago:</div>
+                            
+                            <div class="bg-slate-800 p-4 rounded-2xl text-sm">
+                                "The promo total is showing wrong value on mobile after applying a 20% off code. Screenshot attached."
+                            </div>
+                            
+                            <div class="mt-4 flex gap-x-2">
+                                <button onclick="triggerFromSlack()" 
+                                        class="flex-1 py-3 bg-[#4A154B] hover:bg-[#3C1040] transition-colors rounded-2xl text-sm font-medium flex items-center justify-center gap-x-2">
+                                    <i class="fa-solid fa-hammer"></i>
+                                    <span>React with :forge: to start session</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+            document.body.insertAdjacentHTML('beforeend', modalHTML)
+        }
+        
+        function triggerFromSlack() {
+            document.getElementById('slack-modal').remove()
+            
+            setTimeout(() => {
+                // Create session from "Slack"
+                const newSession = {
+                    id: "sess-" + Math.random().toString(36).substring(2, 7),
+                    repo_id: "frontend-monolith",
+                    branch: `forge/jawish/session-${Math.random().toString(36).substring(2, 7)}`,
+                    status: "running",
+                    created_by_user_id: "maya",
+                    created_at: new Date().toISOString(),
+                    ended_at: null,
+                    outcome: null,
+                    total_cost_usd: 0.67,
+                    total_tokens_in: 2100,
+                    total_tokens_out: 290,
+                    primary_model: "claude-4-sonnet",
+                    participants: ["maya", "jawish"]
+                }
+                
+                sampleData.sessions.unshift(newSession)
+                renderRecentSessions()
+                
+                showSessionDetail(newSession.id)
+                
+                setTimeout(() => {
+                    const container = document.getElementById('live-stream')
+                    if (container) {
+                        addLogLine(container, { type: 'thinking', text: 'Received screenshot from Slack thread. Analyzing mobile checkout UI...' })
+                    }
+                }, 900)
+            }, 500)
+        }
+        
+        function showRepoWizard(repoId) {
+            const modalHTML = `
+                <div id="repo-wizard-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4" onclick="document.getElementById('repo-wizard-modal').remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-8">
+                        <div class="font-semibold text-2xl mb-1">Edit ${repoId} Configuration</div>
+                        <div class="text-sm text-emerald-400 mb-6">Last validated: 4 hours ago • Warm start: 1.8s</div>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1.5">Dockerfile / Setup Script</label>
+                                <textarea class="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-xs font-mono h-28">FROM node:20-alpine\nRUN pnpm install\nRUN pnpm build\n# Prewarm caches...</textarea>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1.5">Prewarm Commands</label>
+                                    <input type="text" value="mypy --cache-dir .mypy_cache; pnpm test -- --run" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1.5">Default MCPs</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-3 py-1 bg-slate-800 rounded-xl text-xs">Linear</span>
+                                        <span class="px-3 py-1 bg-slate-800 rounded-xl text-xs">Datadog</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end gap-x-3 pt-4">
+                                <button onclick="document.getElementById('repo-wizard-modal').remove()" class="px-6 py-3 text-sm">Cancel</button>
+                                <button onclick="validateAndSaveRepoConfig('${repoId}')" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-2xl text-sm font-medium">Validate &amp; Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+            document.body.insertAdjacentHTML('beforeend', modalHTML)
+        }
+        
+        function validateAndSaveRepoConfig(repoId) {
+            const modal = document.getElementById('repo-wizard-modal')
+            modal.innerHTML = `
+                <div class="fixed inset-0 flex items-center justify-center">
+                    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 text-center max-w-xs">
+                        <i class="fa-solid fa-check-circle text-emerald-400 text-4xl mb-4"></i>
+                        <div class="font-semibold">Configuration validated successfully!</div>
+                        <div class="text-xs text-emerald-400 mt-1">New warm start time: 1.6s</div>
+                        
+                        <button onclick="document.getElementById('repo-wizard-modal').remove()" 
+                                class="mt-6 px-8 py-2.5 text-sm bg-emerald-600 rounded-2xl w-full">Done</button>
+                    </div>
+                </div>
+            `
+            
+            setTimeout(() => {
+                if (modal && modal.parentNode) modal.parentNode.removeChild(modal)
+                // Refresh repo view if open
+            }, 2200)
+        }
+        
+        function initializeCostChart() {
+            const ctx = document.getElementById('costChart')
+            if (!ctx) return
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jun 7', 'Jun 9', 'Jun 11', 'Jun 13', 'Jun 15', 'Jun 17', 'Jun 19', 'Jun 21'],
+                    datasets: [{
+                        label: 'Daily LLM Spend ($)',
+                        data: [3200, 2850, 4100, 2980, 2650, 3100, 2450, 2180],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2.5,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#64748b' } },
+                        x: { grid: { color: '#334155' }, ticks: { color: '#64748b' } }
+                    }
+                }
+            })
+        }
+        
+        function showNotifications() {
+            alert("Notifications panel would open here.\n\n• 3 new PRs ready for review\n• Review Agent found 2 high-severity issues today\n• Cost anomaly detected on backend-api (now resolved)")
+        }
+        
+        function filterSessionsTable() {
+            // Already handled by filterSessions()
+        }
+        
+        // New functions for enhanced flows (model controls, invite, diagnostics, VS Code)
+        function showModelControls() {
+            const modal = document.createElement('div')
+            modal.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[80] p-4'
+            modal.innerHTML = `
+                <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-3xl p-6" onclick="event.target === this && this.remove()">
+                    <div class="font-semibold mb-4">Session Model Controls</div>
+                    
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <label class="text-xs text-slate-400">Model</label>
+                            <select class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-2.5 mt-1">
+                                <option>claude-4-sonnet (current)</option>
+                                <option>gpt-5.5-medium</option>
+                                <option>claude-4-opus</option>
+                                <option>gpt-5.5-high-reasoning</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="text-xs text-slate-400">Reasoning Effort</label>
+                            <div class="flex gap-x-2 mt-1">
+                                <div class="flex-1 text-center py-1.5 bg-emerald-600/20 text-emerald-400 rounded-xl text-xs">Medium (current)</div>
+                                <div class="flex-1 text-center py-1.5 bg-slate-800 rounded-xl text-xs cursor-pointer hover:bg-slate-700" onclick="this.classList.add('!bg-emerald-600/20','!text-emerald-400'); this.parentElement.children[0].classList.remove('!bg-emerald-600/20','!text-emerald-400')">High</div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-2 text-xs text-slate-400">
+                            Estimated additional cost for High reasoning: <span class="text-amber-400">+$0.8–1.4</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 py-2.5 text-sm bg-slate-800 rounded-2xl">Cancel</button>
+                        <button onclick="applyModelChange(this)" class="flex-1 py-2.5 text-sm bg-blue-600 rounded-2xl font-medium">Apply &amp; Restart Turn</button>
+                    </div>
+                </div>
+            `
+            document.body.appendChild(modal)
+        }
+        
+        function applyModelChange(btn) {
+            btn.closest('.fixed').remove()
+            const stream = document.getElementById('live-stream')
+            if (stream) {
+                const div = document.createElement('div')
+                div.className = 'log-line flex gap-x-3 items-start py-1 text-amber-300 text-xs'
+                div.innerHTML = `<div class="w-4"><i class="fa-solid fa-sync mt-1"></i></div><div>Model changed. Restarting current turn with new reasoning level...</div>`
+                stream.appendChild(div)
+                stream.scrollTop = stream.scrollHeight
+            }
+        }
+        
+        function inviteCollaborator() {
+            if (!currentSession) return
+            if (!currentSession.participants) currentSession.participants = []
+            
+            const newUser = ['maya', 'devin', 'alex', 'priya'][Math.floor(Math.random()*4)]
+            if (!currentSession.participants.includes(newUser)) {
+                currentSession.participants.push(newUser)
+            }
+            
+            // Refresh multiplayer avatars
+            const container = document.getElementById('modal-multiplayer')
+            container.innerHTML = ''
+            currentSession.participants.forEach((p, i) => {
+                const img = document.createElement('img')
+                img.src = `https://i.pravatar.cc/24?img=${i + 10}`
+                img.className = 'w-6 h-6 rounded-full ring-2 ring-slate-900'
+                container.appendChild(img)
+            })
+            
+            // Toast
+            const toast = document.createElement('div')
+            toast.className = 'fixed bottom-6 right-6 bg-slate-800 border border-slate-700 px-4 py-2 rounded-2xl text-sm flex items-center gap-x-2 z-[90]'
+            toast.innerHTML = `<span>Invited <strong>${newUser}</strong> to session. They can now join via link.</span>`
+            document.body.appendChild(toast)
+            setTimeout(() => toast.remove(), 2200)
+        }
+        
+        function showDiagnosticsDetail() {
+            alert("Full Diagnostics View (Demo)\n\n" +
+                  "• Model TTFT: 420ms (p95: 680ms)\n" +
+                  "• Tool execution p95: 680ms (rg was 41% faster than grep)\n" +
+                  "• Sandbox cold start: 1.8s (warm pool hit)\n" +
+                  "• Context hygiene savings: ~18% tokens reduced safely\n" +
+                  "• Review Agent run time: 47s\n\n" +
+                  "All traces available in OTel / session lake.")
+        }
+        
+        // Hosted VS Code simulation
+        function openHostedVSCode() {
+            const modal = document.createElement('div')
+            modal.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[90] p-4'
+            modal.innerHTML = `
+                <div class="bg-[#1e1e1e] border border-slate-700 w-full max-w-5xl h-[80vh] rounded-2xl overflow-hidden flex flex-col">
+                    <div class="bg-[#252526] px-4 py-2 flex items-center justify-between text-xs text-slate-400">
+                        <div class="flex items-center gap-x-3">
+                            <span class="font-mono">src/components/Checkout.tsx</span>
+                            <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px]">Forge Session • Live</span>
+                        </div>
+                        <button onclick="this.closest('.fixed').remove()" class="px-3 py-1 hover:bg-slate-700 rounded">Close</button>
+                    </div>
+                    
+                    <div class="flex-1 p-6 font-mono text-sm overflow-auto bg-[#1e1e1e] text-[#d4d4d4]">
+                        <pre><code>import React from 'react';
+                        
+export const Checkout = () =&gt; {
+  // Forge applied fix here
+  const total = calculatePromoTotal(items, activePromo);
+  
+  return (
+    &lt;div className="mobile-checkout"&gt;
+      &lt;PromoBanner /&gt;
+      &lt;TotalDisplay value={total} /&gt;
+    &lt;/div&gt;
+  );
+};</code></pre>
+                        
+                        <div class="mt-8 text-xs text-emerald-400/70">
+                            Changes synced from Forge agent. You can edit here — agent will observe.
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[#252526] px-4 py-2 text-xs flex justify-between items-center text-slate-500">
+                        <div>Port 3000 forwarded • Live sync enabled</div>
+                        <div class="flex gap-x-4">
+                            <button class="hover:text-white">Run Tests</button>
+                            <button class="hover:text-white">Commit to Branch</button>
+                        </div>
+                    </div>
+                </div>
+            `
+            document.body.appendChild(modal)
+        }
+        
+        // Boot the dashboard
+        window.onload = function() {
+            initializeDashboard()
+        }
+        
+        // Expose some functions for console debugging if needed
+        window.ForgeDemo = {
+            showSession: (id) => showSessionDetail(id),
+            triggerSlack: () => simulateSlackTrigger()
+        }
+    </script>
+</body>
+</html>
