@@ -165,8 +165,8 @@
 
 - [ ] **7.1 CF Sandbox snapshot/restore speed** (`08` §18 open item): benchmark restore time vs the documented Modal baseline; record result. If short for warm starts → ADR amendment promoting Daytona from "documented" to "built."
 - [ ] **7.2 First per-repo images**: one Python + one TS repo, Chainguard base, `.forge/config.toml` + `.forge/setup.sh` valid per `repoConfigSchema`; build → cosign sign → GHCR. Snapshot+restore verified on dev account. *(Python + TS fixtures built + config-validated against repoConfigSchema — infra/images/sandboxes/test-repos/. The build → cosign → GHCR + snapshot/restore need the dev CF account — §6.1 runbook.)*
-- [ ] **7.3 Model eval** (`08` §18): pick frontier / default-coding / flex / classifier tier IDs via AI Gateway eval. Record choices in an ADR.
-- [ ] **7.4 Auth spike**: CF Access → Google Workspace for the web front door; per-user GitHub OAuth flow for PR attribution (mock PR creation in `fast`). Real in §8.
+- [ ] **7.3 Model eval** (`08` §18): pick frontier / default-coding / flex / classifier tier IDs via AI Gateway eval. Record choices in an ADR. *(Eval framework built — evaluateTier/scoreCandidate; the live eval run needs the AI Gateway + a real test corpus — §6.1.)*
+- [ ] **7.4 Auth spike**: CF Access → Google Workspace for the web front door; per-user GitHub OAuth flow for PR attribution (mock PR creation in `fast`). Real in §8. *(CF Access JWT verification built — verifyCfAccessJwt with JWKS + claim checks; the live CF Access→Google federation needs the Access app configured — §6.1.)*
 - [ ] **7.5 Isolation model review**: Security signs off on the sandbox boundary + Outbound Workers manifest model before §8.
 
 ---
