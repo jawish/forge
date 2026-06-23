@@ -1,0 +1,3 @@
+# Python test repo deps (docs/16 §2 fixture).
+pytest==8.4.0
+fastapi==0.116.0
