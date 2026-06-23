@@ -17,6 +17,7 @@ import type { Env } from "./env";
 import { resolveProfile } from "./env";
 import { configureConsoleExporter, startSpan } from "./otel/console";
 import { SessionDO } from "./do/session";
+import { applyD1Migration } from "./do/d1-schema";
 import { createContext } from "./api/context";
 import { appRouter } from "./api/router";
 import { FORGE_MCP_TOOLS, callTool } from "./mcp/tools";
@@ -54,6 +55,15 @@ export default {
           sandbox: profile === "fast" ? "local" : "cloudflare",
           ts: Date.now(),
         });
+      }
+
+      // /api/ops/init-db — apply the D1 session-projection migration (docs/12 §3).
+      // Used by local dev + tests (miniflare doesn't auto-apply D1 migrations).
+      // In production, `wrangler d1 migrations apply` handles this at deploy.
+      if (url.pathname === "/api/ops/init-db") {
+        await applyD1Migration(env.DB);
+        span.setAttribute("http.status", 200);
+        return jsonResponse({ status: "ok", migrated: "session" });
       }
 
       // --- Seam 3: WS gateway → SessionDO (§5.11) --------------------------

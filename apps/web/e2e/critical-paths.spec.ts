@@ -7,21 +7,32 @@ import { expect, test } from "@playwright/test";
 //
 // Prerequisite: the control-plane Worker running on :8787 (the web app proxies
 // /api + /ws to it). `pnpm --filter @forge/control-plane dev` first.
+//
+// The landing view is the session list (docs/07 §4.4). Each test clicks
+// "+ New Session" to reach the composer, then submits the form.
 
 test.describe("critical paths (docs/16 §4)", () => {
+  // Helper: navigate to the new-session composer from the list landing view.
+  async function goToNewSession(page: import("@playwright/test").Page) {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
+    await page.getByRole("button", { name: /new session/i }).click();
+    await expect(page.getByRole("heading", { name: "New session" })).toBeVisible();
+  }
+
   // 1. LOGIN — the web front door is reachable behind CF Access. In the fast
   // profile CF Access is stubbed (the worker returns a dev user), so "login" is
   // "the app loads + the user is authenticated."
   test("login — web loads behind CF Access (fast: stubbed dev user)", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Forge" })).toBeVisible();
-    // The new-session form is visible (the authenticated landing).
-    await expect(page.getByRole("heading", { name: "New session" })).toBeVisible();
+    // The session list (the authenticated landing) is visible.
+    await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
   });
 
   // 2. CREATE SESSION — repo + prompt form submits; a session is created.
   test("create session — repo + prompt submits a session", async ({ page }) => {
-    await page.goto("/");
+    await goToNewSession(page);
     await page.getByLabel("Repo").fill("repo_e2e");
     await page.getByLabel("Prompt").fill("fix the e2e test fixture");
     await page.getByRole("button", { name: /start session/i }).click();
@@ -31,7 +42,7 @@ test.describe("critical paths (docs/16 §4)", () => {
 
   // 3. VIEW SESSION — the live-stream view loads + the WS connects.
   test("view session — live-stream view + WS connects", async ({ page }) => {
-    await page.goto("/");
+    await goToNewSession(page);
     await page.getByLabel("Repo").fill("repo_e2e_view");
     await page.getByLabel("Prompt").fill("explore the repo");
     await page.getByRole("button", { name: /start session/i }).click();
@@ -42,7 +53,7 @@ test.describe("critical paths (docs/16 §4)", () => {
 
   // 4. SUBMIT PROMPT — a prompt can be sent to a running session.
   test("submit prompt — send a prompt to the session", async ({ page }) => {
-    await page.goto("/");
+    await goToNewSession(page);
     await page.getByLabel("Repo").fill("repo_e2e_prompt");
     await page.getByLabel("Prompt").fill("fix it");
     await page.getByRole("button", { name: /start session/i }).click();
@@ -54,16 +65,16 @@ test.describe("critical paths (docs/16 §4)", () => {
     await expect(page.getByText(/you.*add a test for the fix/)).toBeVisible({ timeout: 10_000 });
   });
 
-  // 5. CANCEL SESSION — navigating back / the cancel flow is reachable.
-  test("cancel session — back to new-session (cancel affordance reachable)", async ({ page }) => {
-    await page.goto("/");
+  // 5. CANCEL SESSION — navigating back returns to the session list.
+  test("cancel session — back to session list", async ({ page }) => {
+    await goToNewSession(page);
     await page.getByLabel("Repo").fill("repo_e2e_cancel");
     await page.getByLabel("Prompt").fill("fix it");
     await page.getByRole("button", { name: /start session/i }).click();
     await expect(page.getByRole("heading", { name: "Session" })).toBeVisible({ timeout: 15_000 });
-    // The "← New session" back affordance is reachable (cancel + start fresh).
-    await expect(page.getByRole("button", { name: /new session/i })).toBeVisible();
-    await page.getByRole("button", { name: /new session/i }).click();
-    await expect(page.getByRole("heading", { name: "New session" })).toBeVisible();
+    // The "← Back" affordance returns to the session list landing.
+    await expect(page.getByRole("button", { name: /back/i })).toBeVisible();
+    await page.getByRole("button", { name: /back/i }).click();
+    await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
   });
 });

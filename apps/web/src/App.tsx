@@ -1,14 +1,16 @@
-// Forge web app shell (§5.26 screen 1: dashboard shell). Minimal routing between
-// the three screens. The session live-stream view connects to /ws/:sessionId.
+// Forge web app shell (§5.26). The session list is the landing view (docs/07
+// §4.4 — dashboard); new-session opens the composer; a live stream opens on
+// row click. The session live-stream view connects to /ws/:sessionId.
 
 import { useState } from "react";
+import { SessionListScreen } from "./screens/SessionList";
 import { NewSessionScreen } from "./screens/NewSession";
 import { SessionLiveScreen } from "./screens/LiveStream";
 
-type View = { name: "new" } | { name: "session"; sessionId: string };
+type View = { name: "list" } | { name: "new" } | { name: "session"; sessionId: string };
 
 export function App() {
-  const [view, setView] = useState<View>({ name: "new" });
+  const [view, setView] = useState<View>({ name: "list" });
 
   return (
     <div
@@ -21,10 +23,15 @@ export function App() {
         </p>
       </header>
 
-      {view.name === "new" ? (
+      {view.name === "list" ? (
+        <SessionListScreen
+          onOpenSession={(sessionId) => setView({ name: "session", sessionId })}
+          onNewSession={() => setView({ name: "new" })}
+        />
+      ) : view.name === "new" ? (
         <NewSessionScreen onCreated={(sessionId) => setView({ name: "session", sessionId })} />
       ) : (
-        <SessionLiveScreen sessionId={view.sessionId} onBack={() => setView({ name: "new" })} />
+        <SessionLiveScreen sessionId={view.sessionId} onBack={() => setView({ name: "list" })} />
       )}
     </div>
   );

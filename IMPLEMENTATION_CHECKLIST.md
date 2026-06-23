@@ -197,6 +197,7 @@
 - [x] Audit: R2 Object Lock Compliance + Merkle chain + hourly Rekor anchor; Pipelines → ClickHouse copy. *(Merkle chain crypto built + verified; Object Lock + Rekor anchor + Pipelines→ClickHouse need the R2/Pipelines bindings — §6)*
 - [x] Cost control v1 (`08` §17): DO cost counters (sync check pre-call), AI Gateway per-request cost, KV kill-switch.
 - [x] Grafana dashboards (`14` §6): session overview, agent behavior, cost, reliability, audit.
+- [x] Basic analytics: session list + conversion funnel + cost/session (`07` §4.4). *(D1 `session` projection table — migrations/0001 + src/do/d1-schema.ts lazy ensureD1SessionTable; session.list + session.stats tRPC queries — cursor pagination, status/repo filters, status funnel + cost rollup; Web SessionList dashboard screen with stat cards + filter pills + session table; 5 seam tests green.)*
 
 ### 8.5 Onboarding
 - [x] Internal docs site; 5-min Slack-flow walkthrough; champion training.

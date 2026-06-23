@@ -162,6 +162,80 @@ export const sessionCancelInputSchema = z.object({
   reason: z.string().default("human_abort"),
 });
 
+/**
+ * Input to session.list (docs/07 §4.4 — session list). Scoped to the caller
+ * (createdByUserId) by default; optional filters narrow the result set. Cursor
+ * pagination on created_at DESC (the natural recency order for a dashboard).
+ */
+export const sessionListInputSchema = z.object({
+  userId: z.string().min(1).optional(),
+  repoId: z.string().min(1).optional(),
+  status: z
+    .enum([
+      "queued",
+      "active",
+      "ready_for_pr",
+      "pr_open",
+      "merged",
+      "closed",
+      "no_change",
+      "failed",
+      "cancelled",
+    ])
+    .optional(),
+  /** Return sessions created strictly before this timestamp (cursor). */
+  beforeCreatedAt: z.number().int().optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+});
+
+/** A single row in the session list (the D1 projection shape, docs/12 §3). */
+export const sessionSummarySchema = z.object({
+  id: z.string(),
+  repoId: z.string(),
+  branch: z.string(),
+  createdByUserId: z.string(),
+  status: z.string(),
+  activity: z.string().nullable(),
+  primaryModel: z.string().nullable(),
+  prUrl: z.string().nullable(),
+  prNumber: z.number().nullable(),
+  createdAt: z.number(),
+  endedAt: z.number().nullable(),
+  totalCostUsd: z.number(),
+  totalTokensIn: z.number(),
+  totalTokensOut: z.number(),
+  outcome: z.string().nullable(),
+});
+export type SessionSummary = z.infer<typeof sessionSummarySchema>;
+
+/**
+ * Input to session.stats (docs/07 §4.4 — conversion funnel + cost/session).
+ * Aggregates over a time window for the caller (or a repo).
+ */
+export const sessionStatsInputSchema = z.object({
+  userId: z.string().min(1).optional(),
+  repoId: z.string().min(1).optional(),
+  /** Only count sessions created at/after this timestamp (unix ms). */
+  since: z.number().int().optional(),
+});
+
+/** Aggregate session stats (the conversion funnel + cost rollup). */
+export const sessionStatsSchema = z.object({
+  total: z.number(),
+  byStatus: z.record(z.string(), z.number()),
+  mergedCount: z.number(),
+  failedCount: z.number(),
+  cancelledCount: z.number(),
+  totalCostUsd: z.number(),
+  totalTokensIn: z.number(),
+  totalTokensOut: z.number(),
+  /** Conversion rate = merged / total (0 when total is 0). */
+  mergeRate: z.number(),
+  /** Mean cost per session (0 when total is 0). */
+  avgCostPerSession: z.number(),
+});
+export type SessionStats = z.infer<typeof sessionStatsSchema>;
+
 /** Input to prompt.submit (docs/12 §2). */
 export const promptSubmitSchema = z.object({
   sessionId: z.string().min(1),
