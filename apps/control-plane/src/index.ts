@@ -19,6 +19,7 @@ import { configureConsoleExporter, startSpan } from "./otel/console";
 import { SessionDO } from "./do/session";
 import { createContext } from "./api/context";
 import { appRouter } from "./api/router";
+import { FORGE_MCP_TOOLS, callTool } from "./mcp/tools";
 
 // Export the DO class so the wrangler binding resolves it.
 export { SessionDO };
@@ -66,6 +67,24 @@ export default {
             return wsResponse;
           }
         }
+      }
+
+      // --- Seam 5: platform MCP tools (docs/10 §6, §5.15) ------------------
+      // /api/mcp/tools  — list the 4 platform-provided MCP tools.
+      // /api/mcp/call   — call a tool against a session's DO (agent-facing).
+      if (url.pathname === "/api/mcp/tools") {
+        span.setAttribute("http.status", 200);
+        return jsonResponse({ tools: FORGE_MCP_TOOLS });
+      }
+      if (url.pathname === "/api/mcp/call" && request.method === "POST") {
+        const body = (await request.json()) as {
+          tool: string;
+          args: Record<string, unknown>;
+          sessionId: string;
+        };
+        const result = await callTool(body.tool, body.args, body.sessionId, env);
+        span.setAttribute("http.status", result.ok ? 200 : 500);
+        return jsonResponse(result, result.ok ? 200 : 500);
       }
 
       // --- Seam 1: tRPC API (§5.6) ------------------------------------------
