@@ -347,3 +347,65 @@ export function isValidState(status: SessionStatus, activity: SessionActivity | 
   if (status !== "active") return activity === null;
   return activity !== null; // when active, activity is required (never null)
 }
+
+// ---------------------------------------------------------------------------
+// Policy gates (docs/11 §6 — configurable per repo) + Review-Agent guard.
+// These are the policy-layer checks the DO consults BEFORE running a transition's
+// side effects. The base transition table is policy-free; these layer repo policy.
+// ---------------------------------------------------------------------------
+
+/** Per-repo policy (docs/11 §6) — drives the configurable gates. */
+export interface RepoPolicy {
+  /** Require a Review-Agent pass before active → ready_for_pr (docs/11 §6). */
+  reviewAgentRequired: boolean;
+  /** Turns-without-progress → activity=stuck (docs/11 §6; default 10). */
+  stuckThresholdTurns: number;
+  /** stuck → status=failed timeout minutes (docs/11 §6; default 5). */
+  stuckTimeoutMinutes: number;
+}
+
+/** The default policy (docs/11 §6 — review off, 10 turns, 5 min). */
+export const DEFAULT_REPO_POLICY: RepoPolicy = {
+  reviewAgentRequired: false,
+  stuckThresholdTurns: 10,
+  stuckTimeoutMinutes: 5,
+};
+
+/** A Review-Agent verdict on a proposed diff (docs/11 §6, US-4.2). */
+export type ReviewVerdict = "approve" | "request_changes" | "pending";
+
+/**
+ * The Review-Agent guard for active → ready_for_pr (docs/11 §6).
+ *
+ * When `reviewAgentRequired` is true, the agent may NOT move to ready_for_pr
+ * until the Review-Agent approves. This gate is the `active → ready_for_pr`
+ * policy hook; the DO consults it before honoring `forge.completePR`.
+ *
+ * Returns whether the transition is allowed + the reason if blocked.
+ */
+export function reviewAgentGate(opts: { policy: RepoPolicy; verdict: ReviewVerdict }): {
+  allowed: boolean;
+  reason: string;
+} {
+  if (!opts.policy.reviewAgentRequired) {
+    return { allowed: true, reason: "review_agent_not_required" };
+  }
+  if (opts.verdict === "approve") return { allowed: true, reason: "review_approved" };
+  if (opts.verdict === "request_changes") {
+    return { allowed: false, reason: "review_requested_changes" };
+  }
+  return { allowed: false, reason: "review_pending" };
+}
+
+/** Should the stuck-detector trip? (docs/11 §5, §6 — turns without progress.) */
+export function shouldTripStuck(opts: {
+  policy: RepoPolicy;
+  turnsWithoutProgress: number;
+}): boolean {
+  return opts.turnsWithoutProgress >= opts.policy.stuckThresholdTurns;
+}
+
+/** Should a stuck session time out to failed? (docs/11 §5, §6.) */
+export function shouldTimeoutStuck(opts: { policy: RepoPolicy; stuckForMinutes: number }): boolean {
+  return opts.stuckForMinutes >= opts.policy.stuckTimeoutMinutes;
+}

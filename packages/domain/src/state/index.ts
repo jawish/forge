@@ -5,6 +5,7 @@
 export {
   STATUS_TRANSITIONS,
   ACTIVITY_TRANSITIONS,
+  DEFAULT_REPO_POLICY,
   canTransition,
   canTransitionActivity,
   legalStatusTargets,
@@ -16,6 +17,9 @@ export {
   findStatusRule,
   isTerminalStatus,
   isValidState,
+  reviewAgentGate,
+  shouldTripStuck,
+  shouldTimeoutStuck,
 } from "./transitions";
 export type {
   StatusTransitionRule,
@@ -23,4 +27,6 @@ export type {
   SideEffect,
   TransitionGuard,
   TransitionReason,
+  RepoPolicy,
+  ReviewVerdict,
 } from "./transitions";
