@@ -155,7 +155,7 @@
 - [x] **6.2** `apps/control-plane/wrangler.jsonc` `--env dev` reads those secrets by name; `.dev.vars` excluded via `.gitignore`.
 - [x] **6.3** `CloudflareSandboxProvider` implementing the §5.18 interface against the real CF Sandbox API (provision/snapshot/restore/destroy; PTY-over-WS exec). Snapshot/restore via the Backups API. *(Code written + interface-verified; live-API validation needs creds — §6.1.)*
 - [x] **6.4** Real AI Gateway model client replacing `MockModelProvider` when `FORGE_DEV_PROFILE=real`. *(Code written + SSE-translation tested; live validation needs the gateway — §6.1.)*
-- [ ] **6.5** Local ClickHouse (Docker `clickhouse/clickhouse-server`) + local OTel exporter to it for analytics/audit pipeline testing. *(ClickHouse DDL shipped in domain; local-Docker exporter + Pipelines wiring is the §6 step.)*
+- [x] **6.5** Local ClickHouse (Docker `clickhouse/clickhouse-server`) + local OTel exporter to it for analytics/audit pipeline testing. *(docker-compose + init schema + OTel collector config + Grafana datasource — boot-verified: db/tables created, INSERT + dashboard queries work.)*
 - [x] **6.6** Provision the dev CF resources the `real` profile depends on (Secrets Store `dev` scope, AI Gateway, Sandbox dev account) — this is the first real Pulumi work; a minimal `infra/pulumi` dev-stack program (per `17` §2) sufficient for local `real`. Full prod-grade IaC widens later. *(Program written + typechecks; \`pulumi up\` needs the CF account — §0.3/§6.1 human.)*
 - [ ] **6.7** **Validate:** `mise dev:real` runs the §5 slice against real model + real sandbox locally. Same loop, real behavior. No per-engineer procurement. *(Needs §6.1 creds — human.)*
 
