@@ -44,9 +44,9 @@
 - [x] **2.1** GitHub Actions workflow `.github/workflows/ci.yml`: install via `mise`, `mise lint`, `tsc --noEmit` per package, `mise test`, `mise test:unit`. All **blocking**.
 - [x] **2.2** Reusable workflow for the ~5 **blocking** E2E paths (`16` §4): login, create session, view session (WS connects), submit prompt, cancel session. Stub the runner now (no tests yet); it turns blocking once §5.28 lands.
 - [x] **2.3** Advisory E2E job (non-blocking) — placeholder.
-- [ ] **2.4** Branch protection on `main`: require `ci.yml` green + 1 reviewer; require status checks before merge; linear history. *(Steps in `.github/REPO_OPS.md` — run once by a Platform admin via `gh`.)*
-- [x] **2.5** Dependabot config (`08` §15): `pnpm` ecosystem, weekly, grouped; GitHub Actions ecosystem.
-- [ ] **2.6** **Validate:** push a no-op PR; confirm CI runs and blocks merge until green + reviewed. *(Human — needs a remote + branch protection applied first; see `.github/REPO_OPS.md`.)*
+- [x] **2.4** Branch protection on `main`: require `ci.yml` green + 1 reviewer; require status checks before merge; linear history. *(Applied + verified via gh api: strict=true, 1 review required, enforce_admins=true, linear_history=true on github.com/jawish/forge.)*
+- [x] **2.5** Dependabot config (`08` §15): `pnpm` ecosystem, weekly, grouped; GitHub Actions ecosystem. *(Dependabot created 2 PRs within minutes of the repo going public — config confirmed working.)*
+- [x] **2.6** **Validate:** push a no-op PR; confirm CI runs and blocks merge until green + reviewed. *(PR #6 opened; CI jobs (tsc, lint, unit, seam) all running; merge blocked by branch protection.)*
 
 ---
 
