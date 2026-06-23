@@ -1,26 +1,31 @@
 // MockModelProvider — the fast-profile model (docs/09 §5, checklist §4.4).
-// Streams canned fixtures (docs/16 §2 model-responses/) so UI/loop work needs
-// zero credentials and is fully deterministic. Implements the same ModelProvider
-// interface as the real AI Gateway client (§6.4).
+// Streams canned fixtures so UI/loop work needs zero credentials and is fully
+// deterministic. Implements the same ModelProvider interface as the real AI
+// Gateway client (§6.4).
+//
+// Fixtures are imported as JSON modules (bundled by Vite/wrangler) so the provider
+// works in BOTH the node pool (provider unit tests) and the workers pool (seam
+// tests / the agent loop) — readFileSync isn't available in the worker runtime.
 //
 // Fixture selection: routes by a hint in the prompt (complete-pr / input), else
 // defaults to the read-and-complete fixture. Deterministic — same input → same
-// stream, so seam tests are stable (docs/16 §3).
+// stream (docs/16 §3).
 
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { ModelEvent, ModelProvider, ModelStreamInput } from "./provider";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const fixturesDir = join(here, "..", "test", "fixtures", "model-responses");
+// Static JSON imports (bundled — no filesystem access needed at runtime).
+import readAndComplete from "../test/fixtures/model-responses/read-and-complete.json";
+import requestHumanInput from "../test/fixtures/model-responses/request-human-input.json";
+import thinkingToolCallCompletion from "../test/fixtures/model-responses/thinking-tool-call-completion.json";
 
-type FixtureFile = { name: string; events: ModelEvent[] };
-
-function loadFixture(name: string): FixtureFile {
-  const raw = readFileSync(join(fixturesDir, `${name}.json`), "utf8");
-  return JSON.parse(raw) as FixtureFile;
-}
+const FIXTURES: Record<string, { name: string; events: ModelEvent[] }> = {
+  "read-and-complete": readAndComplete as { name: string; events: ModelEvent[] },
+  "request-human-input": requestHumanInput as { name: string; events: ModelEvent[] },
+  "thinking-tool-call-completion": thinkingToolCallCompletion as {
+    name: string;
+    events: ModelEvent[];
+  },
+};
 
 /** Which fixture to play for a given prompt. */
 function selectFixture(input: ModelStreamInput): string {
@@ -44,7 +49,7 @@ export class MockModelProvider implements ModelProvider {
 
   async *stream(input: ModelStreamInput): AsyncIterable<ModelEvent> {
     const fixture = selectFixture(input);
-    const { events } = loadFixture(fixture);
+    const { events } = FIXTURES[fixture]!;
     for (const event of events) {
       // Small yield so streaming is observable; keeps seam tests realistic.
       await new Promise((r) => setTimeout(r, 5));
