@@ -182,7 +182,7 @@
 
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
 - [x] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`. *(path-scope + safe-edit + git-identity at spawn built; test-run goes via SandboxProvider.exec — wired)*
-- [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(R2 ARTIFACTS binding + artifact recording built; Browser Run needs the binding — §6)*
+- [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(test-run → R2 → artifact-record → PR-body glue built + tested, src/agent/verification.ts; Browser Run screenshots need the binding — §6)*
 - [ ] code-server embed in-sandbox; one-click open from Web. *(needs the CF Sandbox — §6)*
 - [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo. *(repo config [prewarm]/[mcp] parsed + validated; per-pilot-repo seeding needs real repos — pilot)*
 
