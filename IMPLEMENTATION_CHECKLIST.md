@@ -183,7 +183,7 @@
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
 - [x] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`. *(path-scope + safe-edit + git-identity at spawn built; test-run goes via SandboxProvider.exec — wired)*
 - [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(test-run → R2 → artifact-record → PR-body glue built + tested, src/agent/verification.ts; Browser Run screenshots need the binding — §6)*
-- [ ] code-server embed in-sandbox; one-click open from Web. *(needs the CF Sandbox — §6)*
+- [ ] code-server embed in-sandbox; one-click open from Web. *(Config + deep-link + Dockerfile snippet built — code-server/config.ts; the live embed needs the CF Sandbox running — §6.)*
 - [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo. *(repo config [prewarm]/[mcp] parsed + validated; per-pilot-repo seeding needs real repos — pilot)*
 
 ### 8.3 Git & PR (Track D) — US-3.1/3.2
@@ -217,7 +217,7 @@
 
 ## §10. Phase 3 (outline)
 
-- [ ] Automations at scale; cross-repo orchestration; knowledge integration; self-improvement flywheel; in-platform review; eval harness.
+- [ ] Automations at scale; cross-repo orchestration; knowledge integration; self-improvement flywheel; in-platform review; eval harness. *(Alert-triggered automation handler built — alert-handler.ts; the model-eval harness is built — model-eval.ts; cross-repo orchestration + knowledge integration + self-improvement are the post-pilot Phase-3 widening.)*
 
 ---
 
