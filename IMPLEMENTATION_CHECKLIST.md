@@ -12,10 +12,10 @@
 
 ## §0. Prerequisites (one-time, before §1)
 
-- [ ] **0.1** Install `mise` (`brew install mise` or per its docs); run `mise --version`.
-- [ ] **0.2** `git` ≥ 2.40; `docker` (for local ClickHouse + image build validation); a GitHub account with push rights to the repo.
-- [ ] **0.3** Cloudflare account exists; one Platform member has Admin access (needed later for Workers/DO/D1/R2/KV/Queues/Workflows/Pipelines/AI Gateway/Sandbox/Secrets Store/Access). No CF work in §1–§2 — only local.
-- [ ] **0.4** Confirm Node 22 + pnpm 10 are what `mise` will install (do **not** install globally — `mise` owns versions).
+- [x] **0.1** Install `mise` (`brew install mise` or per its docs); run `mise --version`.
+- [x] **0.2** `git` ≥ 2.40; `docker` (for local ClickHouse + image build validation); a GitHub account with push rights to the repo.
+- [ ] **0.3** Cloudflare account exists; one Platform member has Admin access (needed later for Workers/DO/D1/R2/KV/Queues/Workflows/Pipelines/AI Gateway/Sandbox/Secrets Store/Access). No CF work in §1–§2 — only local. *(Human provisioning — required before §6 `real` profile + §7 spikes.)*
+- [x] **0.4** Confirm Node 22 + pnpm 10 are what `mise` will install (do **not** install globally — `mise` owns versions).
 
 ---
 
@@ -23,15 +23,15 @@
 
 **Spec:** `09` §1 (layout), §4 (`.mise.toml`), `08` §9 (toolchain), ADR-0006 (TS 7 + fallback).
 
-- [ ] **1.1** Create the layout from `09` §1: `apps/{control-plane,web}`, `packages/{domain,plugin-sdk}`, `infra/{pulumi,images/{sandboxes,mcp-servers}}`, `docs/`. Create real `package.json`/`tsconfig.json` only for packages being built now (`domain`, in §3). `plugin-sdk`, `pulumi`, `images/*` start as `.gitkeep` — their internals are built just-in-time (`19` §12 for plugin-sdk; §7.2/§9 for images; §6+ for pulumi).
-- [ ] **1.2** Root `package.json`: private, `pnpm` workspace, shared devDeps (typescript, oxlint, oxfmt, vitest, prettier-as-fallback).
-- [ ] **1.3** `pnpm-workspace.yaml` listing `apps/*` and `packages/*`.
-- [ ] **1.4** `.mise.toml` with the canonical task list from `09` §4 verbatim (`dev`, `dev:real`, `build`, `test`, `test:unit`, `test:e2e`, `test:watch`, `lint`, `deploy`) + `[tools]` node=22, pnpm=10, pulumi=3.
-- [ ] **1.5** `tsconfig.base.json`: TS 7 strict, bundler resolution, `paths` for `@forge/domain` + `@forge/plugin-sdk`.
-- [ ] **1.6** Oxlint config (root): TS + react + promise rules; Oxfmt as formatter; Prettier config kept as documented fallback (not active unless Oxfmt blocks — ADR-0006).
-- [ ] **1.7** `.gitignore`: `node_modules`, `.wrangler/`, `dist/`, `.mise.local.toml`, `.env*` (never committed), `coverage/`.
-- [ ] **1.8** `.editorconfig` matching Oxfmt.
-- [ ] **1.9** **Validate:** `mise install` → `mise --version` tasks list shows all 9 tasks; `mise build` succeeds on the empty workspace; `mise lint` passes (no-op green).
+- [x] **1.1** Create the layout from `09` §1: `apps/{control-plane,web}`, `packages/{domain,plugin-sdk}`, `infra/{pulumi,images/{sandboxes,mcp-servers}}`, `docs/`. Create real `package.json`/`tsconfig.json` only for packages being built now (`domain`, in §3). `plugin-sdk`, `pulumi`, `images/*` start as `.gitkeep` — their internals are built just-in-time (`19` §12 for plugin-sdk; §7.2/§9 for images; §6+ for pulumi).
+- [x] **1.2** Root `package.json`: private, `pnpm` workspace, shared devDeps (typescript, oxlint, oxfmt, vitest, prettier-as-fallback).
+- [x] **1.3** `pnpm-workspace.yaml` listing `apps/*` and `packages/*`.
+- [x] **1.4** `.mise.toml` with the canonical task list from `09` §4 verbatim (`dev`, `dev:real`, `build`, `test`, `test:unit`, `test:e2e`, `test:watch`, `lint`, `deploy`) + `[tools]` node=22, pnpm=10, pulumi=3.
+- [x] **1.5** `tsconfig.base.json`: TS 7 strict, bundler resolution, `paths` for `@forge/domain` + `@forge/plugin-sdk`.
+- [x] **1.6** Oxlint config (root): TS + react + promise rules; Oxfmt as formatter; Prettier config kept as documented fallback (not active unless Oxfmt blocks — ADR-0006).
+- [x] **1.7** `.gitignore`: `node_modules`, `.wrangler/`, `dist/`, `.mise.local.toml`, `.env*` (never committed), `coverage/`.
+- [x] **1.8** `.editorconfig` matching Oxfmt.
+- [x] **1.9** **Validate:** `mise install` → `mise --version` tasks list shows all 9 tasks; `mise build` succeeds on the empty workspace; `mise lint` passes (no-op green).
 
 **Commit gate:** skeleton commits to `main` behind branch protection after §2.1.
 
@@ -41,12 +41,12 @@
 
 **Spec:** `16` §4 (risk-allocated gate), `17` §5 (deploy pipelines — wire triggers now, deploys later).
 
-- [ ] **2.1** GitHub Actions workflow `.github/workflows/ci.yml`: install via `mise`, `mise lint`, `tsc --noEmit` per package, `mise test`, `mise test:unit`. All **blocking**.
-- [ ] **2.2** Reusable workflow for the ~5 **blocking** E2E paths (`16` §4): login, create session, view session (WS connects), submit prompt, cancel session. Stub the runner now (no tests yet); it turns blocking once §5.28 lands.
-- [ ] **2.3** Advisory E2E job (non-blocking) — placeholder.
-- [ ] **2.4** Branch protection on `main`: require `ci.yml` green + 1 reviewer; require status checks before merge; linear history.
-- [ ] **2.5** Dependabot config (`08` §15): `pnpm` ecosystem, weekly, grouped; GitHub Actions ecosystem.
-- [ ] **2.6** **Validate:** push a no-op PR; confirm CI runs and blocks merge until green + reviewed.
+- [x] **2.1** GitHub Actions workflow `.github/workflows/ci.yml`: install via `mise`, `mise lint`, `tsc --noEmit` per package, `mise test`, `mise test:unit`. All **blocking**.
+- [x] **2.2** Reusable workflow for the ~5 **blocking** E2E paths (`16` §4): login, create session, view session (WS connects), submit prompt, cancel session. Stub the runner now (no tests yet); it turns blocking once §5.28 lands.
+- [x] **2.3** Advisory E2E job (non-blocking) — placeholder.
+- [ ] **2.4** Branch protection on `main`: require `ci.yml` green + 1 reviewer; require status checks before merge; linear history. *(Steps in `.github/REPO_OPS.md` — run once by a Platform admin via `gh`.)*
+- [x] **2.5** Dependabot config (`08` §15): `pnpm` ecosystem, weekly, grouped; GitHub Actions ecosystem.
+- [ ] **2.6** **Validate:** push a no-op PR; confirm CI runs and blocks merge until green + reviewed. *(Human — needs a remote + branch protection applied first; see `.github/REPO_OPS.md`.)*
 
 ---
 
@@ -54,20 +54,20 @@
 
 **Spec:** `09` §2 (one package, four concerns). Pure TS, zero runtime deps except `zod`. This unblocks every later slice.
 
-- [ ] **3.1** `packages/domain/package.json` (`@forge/domain`), `tsconfig.json` extending base, vitest config.
-- [ ] **3.2** **`types/`** — plain TS types from `12` §2 + `11`: `SessionStatus` (9), `SessionActivity` (5), `Session`, `Prompt`, `ToolCall`, `Artifact`, `Repo`, `RepoImageVersion`, `ForgeUser`, `Team`, `AuditEvent`, `SessionDOInterface` (`12` §2 DO API), session event types (`10` §4).
-- [ ] **3.3** **`schemas/`** — zod schemas mirroring `types/`: `sessionSchema`, `promptSubmitSchema`, `toolCallSchema`, `artifactSchema`, `repoSchema`, `sessionCreateInputSchema`, etc. These ARE the tRPC/MCP input validators (`10` §2).
-- [ ] **3.4** **`config/`** — `repoConfigSchema` validating `.forge/config.toml` shape from `13` §2 (build/prewarm/model/mcp/policy/paths/git/egress/credentials); `orgConfigSchema`, `envConfigSchema` stubs.
-- [ ] **3.5** **`otel/`** — `ATTR` constants for every `forge.*` attribute (`14` §1); `SPAN` names (`14` §3); `SERVICE` names (`14` §2); ClickHouse `session_event` DDL string (`12` §5) as a typed export.
-- [ ] **3.6** **Errors** — `ForgeError`, `ForgeErrorCategory` (7), category→tRPC map (`15` §4); seeded codes (`BUDGET_EXHAUSTED`, `ILLEGAL_TRANSITION`, `SANDBOX_PROVISIONING_FAILED`, `STUCK_TIMEOUT`, `SANITIZATION_FAILED`, `PROVIDER_ERROR`, `CONFIG_VALIDATION_FAILED`, `GIT_IDENTITY_ERROR`); `ForgeError` class with correlationId.
-- [ ] **3.7** **State machine** — pure functions for the `11` §4/§5 transition tables: `canTransition(statusFrom, statusTo)`, `legalActivityFor(status)`, `transitionSideEffects(transition)` (returns the side-effect manifest — DO implements them). `IllegalTransitionError` thrown on illegal moves.
-- [ ] **3.8** **TOML parser helper** for `.forge/config.toml` → `repoConfigSchema.parse` (smol-toml or @iarna/toml; pick one, pin it).
-- [ ] **3.9** **Unit tests (pure logic — the ~15% unit layer, `16` §1):**
+- [x] **3.1** `packages/domain/package.json` (`@forge/domain`), `tsconfig.json` extending base, vitest config.
+- [x] **3.2** **`types/`** — plain TS types from `12` §2 + `11`: `SessionStatus` (9), `SessionActivity` (5), `Session`, `Prompt`, `ToolCall`, `Artifact`, `Repo`, `RepoImageVersion`, `ForgeUser`, `Team`, `AuditEvent`, `SessionDOInterface` (`12` §2 DO API), session event types (`10` §4).
+- [x] **3.3** **`schemas/`** — zod schemas mirroring `types/`: `sessionSchema`, `promptSubmitSchema`, `toolCallSchema`, `artifactSchema`, `repoSchema`, `sessionCreateInputSchema`, etc. These ARE the tRPC/MCP input validators (`10` §2).
+- [x] **3.4** **`config/`** — `repoConfigSchema` validating `.forge/config.toml` shape from `13` §2 (build/prewarm/model/mcp/policy/paths/git/egress/credentials); `orgConfigSchema`, `envConfigSchema` stubs.
+- [x] **3.5** **`otel/`** — `ATTR` constants for every `forge.*` attribute (`14` §1); `SPAN` names (`14` §3); `SERVICE` names (`14` §2); ClickHouse `session_event` DDL string (`12` §5) as a typed export.
+- [x] **3.6** **Errors** — `ForgeError`, `ForgeErrorCategory` (7), category→tRPC map (`15` §4); seeded codes (`BUDGET_EXHAUSTED`, `ILLEGAL_TRANSITION`, `SANDBOX_PROVISIONING_FAILED`, `STUCK_TIMEOUT`, `SANITIZATION_FAILED`, `PROVIDER_ERROR`, `CONFIG_VALIDATION_FAILED`, `GIT_IDENTITY_ERROR`); `ForgeError` class with correlationId.
+- [x] **3.7** **State machine** — pure functions for the `11` §4/§5 transition tables: `canTransition(statusFrom, statusTo)`, `legalActivityFor(status)`, `transitionSideEffects(transition)` (returns the side-effect manifest — DO implements them). `IllegalTransitionError` thrown on illegal moves.
+- [x] **3.8** **TOML parser helper** for `.forge/config.toml` → `repoConfigSchema.parse` (smol-toml or @iarna/toml; pick one, pin it).
+- [x] **3.9** **Unit tests (pure logic — the ~15% unit layer, `16` §1):**
   - zod schemas accept valid + reject invalid samples (golden fixtures);
   - state machine: every legal transition allowed; every illegal transition rejected; side-effect manifest correct for each;
   - error category→tRPC mapping exhaustive;
   - `repoConfigSchema` accepts the `13` §2 example and rejects a malformed one.
-- [ ] **3.10** **Validate:** `pnpm --filter @forge/domain test` green; `tsc --noEmit` green. Wire into CI (§2.1 already covers it).
+- [x] **3.10** **Validate:** `pnpm --filter @forge/domain test` green; `tsc --noEmit` green. Wire into CI (§2.1 already covers it).
 
 ---
 
