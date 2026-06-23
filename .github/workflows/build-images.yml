@@ -41,7 +41,7 @@ jobs:
 
       - name: Build the image
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: infra/images/sandboxes/test-repos/${{ matrix.repo }}
           file: infra/images/sandboxes/test-repos/${{ matrix.repo }}/.forge/Dockerfile
@@ -72,7 +72,7 @@ jobs:
 
       - name: Push the image
         id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: infra/images/sandboxes/test-repos/${{ matrix.repo }}
           file: infra/images/sandboxes/test-repos/${{ matrix.repo }}/.forge/Dockerfile
