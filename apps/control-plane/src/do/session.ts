@@ -14,6 +14,7 @@ import {
   IllegalTransitionError,
   SPAN,
   canTransition,
+  checkBudget,
   isTerminalStatus,
   isValidState,
   legalActivityFor,
@@ -295,6 +296,74 @@ export class SessionDO extends Agent<Env, SessionDOState> {
     await this.transitionTo({ activity: "running" }, "human_resume");
   }
 
+  // --- Cost control (docs/08 §17, checklist §8.4) -------------------------
+
+  /** Record a cost event + update the running totals (incremental counter). */
+  async recordCost(entry: {
+    source: "model" | "sandbox_cpu" | "sandbox_egress" | "browser_run" | "other";
+    costUsd: number;
+    tokensIn?: number | null;
+    tokensOut?: number | null;
+    model?: string | null;
+    detailJson?: string | null;
+  }): Promise<void> {
+    this.ensureMigrated();
+    const meta = this.getMetaRow();
+    if (!meta) return;
+    this.ctx.storage.sql.exec(
+      `INSERT INTO cost_event (ts, source, cost_usd, tokens_in, tokens_out, model, detail_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      Date.now(),
+      entry.source,
+      entry.costUsd,
+      entry.tokensIn ?? null,
+      entry.tokensOut ?? null,
+      entry.model ?? null,
+      entry.detailJson ?? null,
+    );
+    // Update the denormalized totals on session_meta (the hot read path).
+    this.ctx.storage.sql.exec(
+      `UPDATE session_meta
+       SET total_cost_usd = total_cost_usd + ?,
+           total_tokens_in = total_tokens_in + ?,
+           total_tokens_out = total_tokens_out + ?
+       WHERE id = ?`,
+      entry.costUsd,
+      entry.tokensIn ?? 0,
+      entry.tokensOut ?? 0,
+      meta.id,
+    );
+  }
+
+  /**
+   * Synchronous pre-call budget check (docs/08 §17). Call BEFORE each model call.
+   * Returns whether the call is within the session budget; the caller (agent loop)
+   * transitions to failed on BUDGET_EXHAUSTED.
+   */
+  async checkBudgetBeforeCall(callCostUsd: number): Promise<{
+    allowed: boolean;
+    reason?: string;
+    projectedTotalUsd: number;
+    budgetLimitUsd: number | null;
+  }> {
+    this.ensureMigrated();
+    const meta = this.getMetaRow();
+    if (!meta) {
+      return {
+        allowed: false,
+        reason: "session not spawned",
+        projectedTotalUsd: 0,
+        budgetLimitUsd: null,
+      };
+    }
+    const r = checkBudget({
+      currentTotalUsd: meta.total_cost_usd,
+      callCostUsd,
+      budgetLimitUsd: meta.budget_limit_usd,
+    });
+    return r;
+  }
+
   // --- Reads (docs/12 §2) --------------------------------------------------
 
   async getStatus(): Promise<{
@@ -394,6 +463,7 @@ export class SessionDO extends Agent<Env, SessionDOState> {
     total_cost_usd: number;
     total_tokens_in: number;
     total_tokens_out: number;
+    budget_limit_usd: number | null;
   } | null {
     const rows = this.sql`SELECT * FROM session_meta WHERE id = ${this.ctx.id.toString()}`;
     const row = rows[0] as
@@ -406,6 +476,7 @@ export class SessionDO extends Agent<Env, SessionDOState> {
           total_cost_usd: number;
           total_tokens_in: number;
           total_tokens_out: number;
+          budget_limit_usd: number | null;
         }
       | undefined;
     return row ?? null;

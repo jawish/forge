@@ -176,9 +176,9 @@
 > Full lifecycle, real surfaces. Detail each into TDD micro-steps when you reach it.
 
 ### 8.1 Slack entry (Track D, seam 4) — `19` Part A
-- [ ] Slack Bolt on the control-plane Worker (`/slack/events`); signing-secret verification; thread posting; dedup on `(repo,branch,slack_thread)`.
-- [ ] Stage-1 intent filter (tier-5 model) → stage-2 repo router (Workers AI → Vectorize `forge-repo-classifier`) → tiered-confidence policy (auto-spawn/confirm/disambiguate/explain).
-- [ ] Seed Vectorize with pilot-repo descriptions/READMEs/commits.
+- [x] Slack Bolt on the control-plane Worker (`/slack/events`); signing-secret verification; thread posting; dedup on `(repo,branch,slack_thread)`.
+- [x] Stage-1 intent filter (tier-5 model) → stage-2 repo router (Workers AI → Vectorize `forge-repo-classifier`) → tiered-confidence policy (auto-spawn/confirm/disambiguate/explain).
+- [ ] Seed Vectorize with pilot-repo descriptions/READMEs/commits. *(Needs Workers AI + Vectorize bindings provisioned — §6/prod; the router port + classifier are built and testable without them.)*
 
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
 - [ ] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`.
