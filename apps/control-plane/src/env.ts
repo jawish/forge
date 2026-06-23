@@ -31,7 +31,14 @@ export interface Env {
   CONFIG_KV: KVNamespace;
   // Queues: async work (docs/12 — image builds, analytics pipeline).
   WORK_QUEUE: Queue<unknown>;
-  // Real-profile secrets arrive via the boundary (docs/18 §6); not held here.
+  // Slack (§8.1): signing secret + bot token. Bound from CF Secrets Store; the
+  // fast profile runs without them (the ports factory logs instead of posting).
+  SLACK_SIGNING_SECRET?: string;
+  SLACK_BOT_TOKEN?: string;
+  // Workers AI + Vectorize (§8.1 stage-2 router). Bound when provisioned; the
+  // fast profile uses deterministic stubs.
+  AI?: Ai;
+  VECTORIZE?: VectorizeIndex;
 }
 
 /**

@@ -20,6 +20,9 @@ import { SessionDO } from "./do/session";
 import { createContext } from "./api/context";
 import { appRouter } from "./api/router";
 import { FORGE_MCP_TOOLS, callTool } from "./mcp/tools";
+import { handleSlackEvent } from "./slack/handler";
+import { SLACK_SIGNATURE_HEADER, SLACK_TIMESTAMP_HEADER } from "./slack/verify";
+import { buildSlackPorts } from "./slack/ports";
 
 // Export the DO class so the wrangler binding resolves it.
 export { SessionDO };
@@ -85,6 +88,26 @@ export default {
         const result = await callTool(body.tool, body.args, body.sessionId, env);
         span.setAttribute("http.status", result.ok ? 200 : 500);
         return jsonResponse(result, result.ok ? 200 : 500);
+      }
+
+      // --- Seam 4: Slack Events API (docs/19 Part A, §8.1) -----------------
+      // /slack/events: verify signing secret → classify → act (spawn/post/dedup).
+      if (url.pathname === "/slack/events" && request.method === "POST") {
+        const rawBody = await request.text();
+        const signingSecret = (env.SLACK_SIGNING_SECRET as string | undefined) ?? "";
+        const result = await handleSlackEvent({
+          config: { signingSecret },
+          ports: buildSlackPorts(env),
+          signature: request.headers.get(SLACK_SIGNATURE_HEADER),
+          timestamp: request.headers.get(SLACK_TIMESTAMP_HEADER),
+          rawBody,
+        });
+        span.setAttribute("http.status", 200);
+        // url_verification needs the challenge echoed back; other results are acks.
+        if (result.kind === "url_verification") {
+          return jsonResponse({ challenge: result.challenge });
+        }
+        return jsonResponse({ ok: true, result: result.kind });
       }
 
       // --- Seam 1: tRPC API (§5.6) ------------------------------------------
