@@ -2,7 +2,7 @@
 **Internal Background Coding & Engineering Agent Platform**  
 *Inspired by Ramp's Inspect (builders.ramp.com/post/why-we-built-our-background-agent) and evolved with 2026 learnings from production scale.*
 
-**Status**: Final Refined Design v1.1 — Ready for stakeholder review, Phase 0 spikes, and pilot kickoff. All adversarial gaps addressed.  
+**Status**: Canonical design — ready for stakeholder review, Phase 0 spikes, and pilot kickoff.
 **Owner**: Product Engineering & Platform Team  
 **Date**: June 2026  
 **Audience**: Engineering Leadership, Platform Team, Security, Product for rollout planning.
@@ -17,8 +17,8 @@ This suite provides a complete, production-ready specification for building and 
 3. **03_Architecture.md** — System architecture, C4-style diagrams (Mermaid), data flows, components, tech choices, sandbox lifecycle
 4. **04_Interface_Design.md** — Key interfaces, user journeys, wireframe descriptions, interaction patterns (Slack, Web, In-Sandbox)
 5. **05_Security_Ops_Observability.md** — Security model, compliance, cost control, observability, reliability (SOTA practices)
-6. **06_Adversarial_Review.md** — Independent critique of v0 design, identified gaps/risks, mitigations addressed in final
-7. **07_Implementation_Roadmap.md** — Phased rollout plan, milestones, success metrics, risks
+6. **06_Adversarial_Review.md** — Independent critique of the design: the gaps/risks identified and the mitigations now embodied in the canonical specs.
+7. **07_Implementation_Roadmap.md** — **Engineering execution track.** Build order + vertical-slice decomposition aligned to the locked specs (`08`–`19`), with detailed Phase 0 and the Phase 1/2/3 plan.
 8. **08_Tech_Stack.md** — **Authoritative technology stack specification.** Single source of truth for all vendor/tooling decisions. *Supersedes vendor-specific references in 03/05/07 wherever they conflict.*
 9. **09_Project_Structure.md** — **Authoritative engineering structure.** Monorepo layout (apps/packages/infra), Worker topology (2 Workers split by deployment cadence), the unified `domain` package, build orchestration (pnpm + mise), and the two-profile local dev environment (`fast` / `real`).
 10. **10_API_Contracts.md** — The contract at each of Forge's six system seams (Web↔control-plane via tRPC; control-plane↔DO in-process; browser↔DO via Agents SDK Client SDK; external webhooks via zod; agent↔control-plane via MCP tools; ops/debugging REST-ish).
@@ -33,6 +33,8 @@ This suite provides a complete, production-ready specification for building and 
 19. **19_Integration_Contracts.md** — Two integration surfaces: (A) Slack classifier (two-stage: intent filter + repo router; tiered confidence: auto-spawn/confirm/disambiguate/explain) and (B) extension model (one seam — MCP only; OpenCode integration via configure-not-fork; `plugin-sdk` = MCP author SDK).
 
 Companion files (root):
+- **`IMPLEMENTATION_CHECKLIST.md`** — The tickable step-by-step build list. Start here when implementing; each checkbox maps to a slice in `07`.
+- **`README.md`** — Concise dev-environment setup, tasks, and repo orientation.
 - **`CONTEXT.md`** — Glossary of canonical domain terms (Session, Prompt, Tool Call, Artifact, Sandbox, Trust Anchor, etc.). Refer here when a term is ambiguous.
 - **`docs/adr/`** — Architectural Decision Records for the surprising choices (all-CF strategy, ClickHouse unification, TanStack Start, OpenCode+Agents SDK, Rekor trust anchor, TS 7, unified artifact pipeline).
 

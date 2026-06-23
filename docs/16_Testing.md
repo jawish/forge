@@ -1,6 +1,5 @@
 # Forge — Testing Strategy
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for test layering, mocking conventions, and CI gate policy.
 **Companion docs**: `08_Tech_Stack.md` §9 (Vitest + Playwright), `09_Project_Structure.md` (local dev profiles).
 

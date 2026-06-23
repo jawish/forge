@@ -1,6 +1,5 @@
 # Forge — Configuration Model
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for all configuration across the platform.
 **Companion docs**: `09_Project_Structure.md` (where packages live), `11_State_Model.md` (policy fields referenced), `12_Data_Schemas.md` (`repo` table).
 

@@ -1,6 +1,5 @@
 # Forge — Technology Stack Specification
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative. Supersedes vendor-specific references in `03_Architecture.md`, `05_Security_Ops_Observability.md`, and `07_Implementation_Roadmap.md` wherever they conflict.
 **Companion docs**: `CONTEXT.md` (glossary), `docs/adr/` (architectural decision records for the surprising choices).
 
@@ -358,9 +357,11 @@ These are **deliberate deferrals**, documented so future readers don't think the
 
 ## How to read this doc alongside the others
 
+This doc is the **authoritative** source for every vendor and tooling choice; it supersedes any vendor noun elsewhere. The surrounding docs consume those decisions:
+
 - **`CONTEXT.md`** (root) — glossary. If a term here is fuzzy, check there.
 - **`docs/adr/`** — the 7 surprising decisions in depth (rationale + rejected alternatives + consequences).
-- **`03_Architecture.md`** — system architecture, mermaid diagrams, ERD. Still valid in structure; vendor nouns updated to match this doc.
-- **`05_Security_Ops_Observability.md`** — security model, threat mitigations. Updated to reference CF Sandbox + Outbound Workers + the audit pipeline here.
-- **`07_Implementation_Roadmap.md`** — phases and timeline. Updated to reference the locked toolchain.
-- **`01_PRD.md` / `02_User_Stories.md` / `04_Interface_Design.md` / `06_Adversarial_Review.md`** — product requirements, user stories, UX, adversarial review. Largely tool-agnostic; scanned for contradicting nouns.
+- **`03_Architecture.md`** — system architecture, mermaid diagrams, ERD. Structural; vendor nouns come from this doc.
+- **`05_Security_Ops_Observability.md`** — security model and threat mitigations, grounded in CF Sandbox, Outbound Workers, and the audit pipeline defined here.
+- **`07_Implementation_Roadmap.md`** — build order and phasing, sequenced against this toolchain.
+- **`01_PRD.md` / `02_User_Stories.md` / `04_Interface_Design.md` / `06_Adversarial_Review.md`** — product requirements, user stories, UX, and adversarial review (tool-agnostic by design).

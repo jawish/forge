@@ -1,6 +1,5 @@
 # Forge — Error Model
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for the error contract across all seams.
 **Companion docs**: `10_API_Contracts.md` (per-seam integration), `12_Data_Schemas.md` (DO API).
 

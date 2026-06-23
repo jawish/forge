@@ -1,6 +1,5 @@
 # Forge — Integration & Extension Contracts
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for Slack classifier logic + OpenCode/MCP extension model.
 **Companion docs**: `08_Tech_Stack.md` §11/§13 (Slack bot, MCP governance), `10_API_Contracts.md` (seam 4 + 5), `12_Data_Schemas.md` (mcp_server table).
 

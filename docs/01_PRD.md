@@ -1,5 +1,5 @@
 # Forge PRD: Product Requirements Document
-**Version**: 1.1 (Post-Adversarial Review — Gaps Addressed)  
+**Status**: Canonical
 **Date**: 2026-06-20
 
 ## 1. Executive Summary
@@ -59,13 +59,13 @@ Inspired by Ramp Inspect (76.5% of merged PRs via agent in 6 months, 10k+ daily 
 - Model support: multi-provider (Claude 4.x, GPT-5.x, OpenCode Zen, etc.) with smart defaults + manual override.
 - Per-session controls: model, reasoning effort, temperature hints.
 
-**v1.1 (Post-Pilot, +2 months)**:
+**Phase 2 (Post-Pilot, +2 months)**:
 - Review agents (Review Buddy style): multi-model critique/improvement of proposed diffs before human review.
 - Deeper integrations: Linear/Notion issue sync, Grafana/ClickHouse alert → auto-investigation session, feature flag queries.
 - Advanced cost controls: flex tiers for background, context pruning (safe), tool preference learning.
 - Hosted VS Code + port tunneling for live debugging in sandbox.
 
-**Out of Scope (v2+)**:
+**Phase 3+ (Out of Scope for MVP)**:
 - Full autonomous production deploys (human + CI gates remain).
 - Multi-org / SaaS multi-tenant (single-tenant internal only).
 - Arbitrary code execution outside allowlisted repos/paths (strict scoping).

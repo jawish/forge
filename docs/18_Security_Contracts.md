@@ -1,6 +1,5 @@
 # Forge — Security Contracts
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for sanitization pipeline + Outbound Workers boundary contract.
 **Companion docs**: `08_Tech_Stack.md` §3/§5/§15 (sandbox, audit, supply chain), `12_Data_Schemas.md` (ClickHouse session_event), `13_Configuration.md` (sensitive paths).
 

@@ -1,6 +1,5 @@
 # Forge — Session State Model
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for session lifecycle. Supersedes the flat status enum in `03_Architecture.md` §4.
 **Companion docs**: `12_Data_Schemas.md` (where these fields live), `10_API_Contracts.md` (DO API that mutates them).
 

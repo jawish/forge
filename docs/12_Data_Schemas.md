@@ -1,6 +1,5 @@
 # Forge — Data Schemas
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative DDL/DML shape for all stores. Derived from the ERD in `03_Architecture.md` §4 + the state model in `11_State_Model.md` + the data-layer decisions in `08_Tech_Stack.md` §4.
 **Companion docs**: `11_State_Model.md` (status/activity semantics), `10_API_Contracts.md` (DO API).
 

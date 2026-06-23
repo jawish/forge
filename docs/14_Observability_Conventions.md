@@ -1,6 +1,5 @@
 # Forge — Observability Conventions
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for OTel attribute names, span names, service names, and sampling strategy.
 **Companion docs**: `08_Tech_Stack.md` §14 (ClickHouse + ClickStack + Grafana), `12_Data_Schemas.md` §5 (ClickHouse tables).
 

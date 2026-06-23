@@ -1,5 +1,5 @@
 # Forge: Security, Operations, Observability & Cost Engineering
-**Version**: 1.1 (Refined — SOTA practices, Ramp lessons on cost/token pitfalls, full auditability)  
+**Status**: Canonical
 **Audience**: Security, Infra/Platform, Compliance, Finance teams.
 
 ## 1. Security Model & Threat Mitigations

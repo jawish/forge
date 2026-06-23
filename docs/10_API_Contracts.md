@@ -1,6 +1,5 @@
 # Forge — API Contracts
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for the contract at each system seam.
 **Companion docs**: `09_Project_Structure.md` (topology), `11_State_Model.md`, `12_Data_Schemas.md`, `packages/domain/` (shared types/schemas).
 

@@ -1,5 +1,5 @@
 # Forge Interface Design & User Experience
-**Version**: 1.1 (Refined)  
+**Status**: Canonical
 **Principles**: Slack-first zero-friction entry; Web for depth/control/replay; In-sandbox tools feel native; multiplayer natural; transparency on agent actions without noise. Mobile-responsive + accessible.
 
 ## 1. Core User Journeys (Textual Wireframes + Flow)
@@ -45,7 +45,7 @@
 - Changes made manually sync awareness to agent (or agent observes FS).
 - Useful for visual debugging, teaching non-eng, or when agent stuck.
 
-**Chrome Extension (v1.1 or optional)**:
+**Chrome Extension** (deferred to a later phase, optional):
 - For React-heavy apps: Sidebar chat + "Select element" tool (extracts DOM/React tree cheaply, no full screenshot tokens).
 - "Highlight bug → Describe → Start Forge session on frontend repo".
 
@@ -56,7 +56,7 @@
 4. Result: Structured report posted back to incident thread/Linear + optional proposed PR (or "no code change needed, root cause X").
 5. Deduping prevents duplicate sessions for same fingerprint.
 
-**Review Agents** (v1.1):
+**Review Agents** (Phase 2):
 - On PR creation or "ready" signal from Forge session: Review Buddy (multi-model) runs in parallel or sequential.
 - Posts comments or creates improved branch: "Security: potential IDOR here... Suggested fix: ...", "Perf: N+1 query detected", "Tests: coverage gap on edge case".
 - Human sees pre-vetted PR.

@@ -1,9 +1,9 @@
-# Forge Adversarial Review (v0 → v1.1 Refinements)
+# Forge Adversarial Review
 **Reviewer Mindset**: Senior Staff Engineer + Security Architect + Product skeptical of hype. "What will break at 10x scale? What kills trust or causes incidents? What did Ramp learn the hard way that we might miss?"  
 **Date**: 2026-06-20  
-**Scope**: Reviewed initial PRD, User Stories, Architecture, Interface drafts. Assumed single-tenant internal deployment for a mid-to-large tech/fintech/software company.
+**Scope**: Reviewed the PRD, User Stories, Architecture, and Interface drafts. Assumed single-tenant internal deployment for a mid-to-large tech/fintech/software company.
 
-## Positive Strengths of v0 Design
+## Positive Strengths of the Design
 - Strong alignment with proven Ramp Inspect patterns (sandbox verification loop, Slack-first, per-repo tuning, data flywheel, user attribution for PRs).
 - Excellent leverage of OSS (OpenCode + background-agents reference) → realistic 3-6mo MVP.
 - Architecture choices (CF DO + direct WS via Agents SDK, CF Sandbox snapshots, OTel everywhere) are battle-tested and address real perf issues (6.5s → 2s).
@@ -11,7 +11,7 @@
 - Multiplayer, sub-session spawning, and review agents show forward-looking agentic factory vision without over-scoping MVP.
 - Clear traceability from PRD goals → stories → architecture.
 
-## Critical Gaps & Risks Identified (Addressed in v1.1)
+## Critical Gaps & Risks Identified (and how they were resolved)
 ### 1. Security & Trust Gaps (High Severity)
 **Original Weakness**:
 - Sandbox isolation described at high level but lacked concrete threat model, network controls, secret lifecycle, and defense-in-depth against prompt injection or tool misuse.
@@ -80,18 +80,18 @@
 - Multi-repo coordination only lightly touched (sub-sessions good start).
 - Evaluation of agent quality beyond %PRs weak (no internal SWE-bench equivalent or failure taxonomy).
 - "Never go to GitHub" teaser exciting but no safe path defined (human gates preserved).
-- No explicit deprecation or migration plan from existing tools/scripts.
+- No explicit sunset or migration plan from existing tools/scripts.
 
 **Refinements**:
 - Sub-session spawning + parent monitoring emphasized for decomposition.
 - Analytics section now includes failure taxonomy capture → drives eval harness (inspired by Ramp SWE-Bench from their PRs).
 - Review agents + configurable gates provide path to higher autonomy safely.
 - Added "Sunset criteria for old tools" in Ops.
-- Roadmap note: v2 cross-repo orchestration layer.
+- Roadmap note: Phase 3 cross-repo orchestration layer (`07` §6).
 
 ### 6. Other Minor/Implementation Gaps Addressed
 - Git provider abstraction noted (start GitHub, design for GitLab later).
-- Chrome extension / visual element extraction for non-eng made optional v1.1.
+- Chrome extension / visual element extraction for non-eng deferred to a later phase.
 - Hosted VS Code + port tunneling confirmed in stories/architecture.
 - Dependencies section expanded with concrete OSS + provider choices.
 - Success metrics made more leading-indicator heavy and traceable.
@@ -103,19 +103,19 @@
 - Over-adoption leading to review queue pressure (Review Agents + metrics will surface; org process change outside Forge scope).
 
 ## Overall Assessment
-**v0 was already strong** — 80% of the way to a production system because it faithfully adapted Ramp's blueprint + OSS accelerator + SOTA infra choices.
+**The design is strong** — a faithful adaptation of Ramp's blueprint, the OSS accelerator, and SOTA infrastructure choices, already addressing the bulk of production risks.
 
-**v1.1 is significantly de-risked** for security incidents, cost surprises, trust erosion, and operational overload at scale. The refinements make it a document suite ready for stakeholder review and implementation kickoff.
+The mitigations above de-risk the remaining concerns around security incidents, cost surprises, trust erosion, and operational overload at scale. The document suite is ready for stakeholder review and implementation kickoff.
 
-**Recommendation**: Proceed to detailed design spikes (OpenCode plugin for company MCPs, first per-repo image, control plane skeleton on CF) and 2-week pilot on 1-2 repos with champion users. Re-review after 500 real sessions.
+**Recommendation**: Proceed to the Phase 0 spikes (CF Sandbox snapshot/restore benchmark, first per-repo image, model-tier eval, control-plane skeleton on CF, OpenCode-as-MCP-consumer config) and a pilot on 1–2 repos with champion users. Re-review after 500 real sessions.
 
 **Key Watch Items for Implementation Team**:
 1. Sandbox isolation validation (pen-test or provider audit).
 2. End-to-end tracing implementation (instrument first 3 critical paths).
 3. Safe context hygiene rules + router prototype (test with real sessions before scaling).
 4. Per-repo image ownership model + automation of build pipeline.
-5. First Review Agent (multi-model critique) as quick v1.1 win for trust.
+5. First Review Agent (multi-model critique) as an early Phase 2 win for trust.
 
-This adversarial process turned a solid inspired design into a battle-ready specification. Forge has strong potential to deliver Ramp-like (or better) productivity gains tailored to [Company]'s context, tools, and culture.
+This adversarial process turned a solid inspired design into a battle-ready specification. Forge has strong potential to deliver Ramp-like (or better) productivity gains tailored to the company's context, tools, and culture.
 
-*All gaps from this review have been addressed in the final versions of 01_PRD.md, 02_User_Stories.md, 03_Architecture.md, 04_Interface_Design.md, and 05_Security_Ops_Observability.md.*
+*All gaps from this review are resolved in the canonical specs (`01_PRD.md` through `19_Integration_Contracts.md`); the build order is in `07_Implementation_Roadmap.md`.*

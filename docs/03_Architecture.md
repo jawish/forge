@@ -1,5 +1,5 @@
 # Forge System Architecture
-**Version**: 1.1 (Refined — incorporates Sandboxes V2 learnings, direct WS control, per-repo tuning, cost routing, full tracing)  
+**Status**: Canonical
 **Style**: C4-inspired + layered + dataflow. All diagrams Mermaid (renderable in GitHub, VS Code, Notion, etc.).
 
 ## 1. High-Level Context (C4 Level 1)
@@ -243,7 +243,7 @@ flowchart LR
 
 ## 6. Technology Choices & Justifications
 
-> **All technology choices are resolved and locked in `08_Tech_Stack.md`** — that document is the authoritative spec and supersedes the table below (which is preserved for historical context). Each surprising decision has an ADR in `docs/adr/`.
+> **All technology choices are resolved and locked in `08_Tech_Stack.md`** — that document is the authoritative spec and supersedes the summary table below wherever they conflict. Each surprising decision has an ADR in `docs/adr/`.
 
 **Locked (summary — see `08_Tech_Stack.md` for rationale and rejected alternatives):**
 

@@ -1,6 +1,5 @@
 # Forge — Environments & Deployment
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for environment topology, data promotion, and secrets workflow.
 **Companion docs**: `08_Tech_Stack.md` §16 (Pulumi + GitHub Actions + CF Workers Builds), `09_Project_Structure.md` (local dev profiles).
 

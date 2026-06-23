@@ -1,5 +1,5 @@
 # Forge User Stories & Requirements
-**Version**: 1.1 (Refined) | **Format**: INVEST + Gherkin-style acceptance criteria where complex.
+**Status**: Canonical | **Format**: INVEST + Gherkin-style acceptance criteria where complex.
 
 ## Epic 0: Foundation & Platform Bootstrapping
 **US-0.1** As a Platform Engineer, I can provision a new Forge deployment (control plane + sandbox provider) so that the system is ready for repo onboarding.  
@@ -116,4 +116,4 @@ Leverage OSS reference heavily for 70% of plumbing.
 
 All stories map to Architecture components (Session Manager, Sandbox Orchestrator, Agent Runtime via OpenCode, Integration Layer, Analytics Service).
 
-*Refined post-review: Added explicit safety gates, audit, cost NFRs, sub-session spawning, review agents as v1.1, stronger per-repo tuning emphasis.*
+*Refinements folded in from the adversarial review (`06`): explicit safety gates, audit, cost NFRs, sub-session spawning, review agents scheduled for Phase 2, stronger per-repo tuning emphasis.*

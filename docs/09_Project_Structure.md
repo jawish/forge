@@ -1,6 +1,5 @@
 # Forge — Project Structure & Topology
 
-**Version**: 1.0 (locked)
 **Status**: Authoritative for monorepo layout, Worker topology, and local dev environment.
 **Companion docs**: `08_Tech_Stack.md` (vendors), `10_API_Contracts.md`, `11_State_Model.md`, `12_Data_Schemas.md`.
 
@@ -90,7 +89,7 @@ All routes share the same bindings. The Slack bot spawns a session by calling `e
 - **No team-boundary benefit** — it's one platform team.
 - **Coupled-deploy risk is theoretical** — CF Workers deploy near-zero-downtime; WS reconnection is handled by the Client SDK.
 
-> See ADR-0003 (amended) for the realtime transport note that supersedes the earlier "dedicated session-gateway Worker" framing.
+> See ADR-0003 for the realtime transport decision: the WS gateway is a route on the control-plane Worker, not a separate gateway Worker.
 
 ---
 
