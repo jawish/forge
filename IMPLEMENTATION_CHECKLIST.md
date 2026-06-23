@@ -192,7 +192,7 @@
 - [x] Bidirectional PR↔session links.
 
 ### 8.4 Observability + safety (Track A+B) — `14`, `18`, ADR-0005
-- [ ] Session-scoped sampling + status-aware promotion (`14` §4): skeleton ~80%, full ~20% + high-sensitivity, promote-to-full on `failed`/`closed`.
+- [x] Session-scoped sampling + status-aware promotion (`14` §4): skeleton ~80%, full ~20% + high-sensitivity, promote-to-full on `failed`/`closed`.
 - [x] Sanitization pipeline (`18` Part A): projection-first ClickHouse event; layered redaction; `SANITIZATION_FAILED` on unclassifiable.
 - [x] Audit: R2 Object Lock Compliance + Merkle chain + hourly Rekor anchor; Pipelines → ClickHouse copy. *(Merkle chain crypto built + verified; Object Lock + Rekor anchor + Pipelines→ClickHouse need the R2/Pipelines bindings — §6)*
 - [x] Cost control v1 (`08` §17): DO cost counters (sync check pre-call), AI Gateway per-request cost, KV kill-switch.
