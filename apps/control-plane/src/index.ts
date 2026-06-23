@@ -11,11 +11,14 @@
 // spans print (checklist §4.7). The other routes land in §5/§8.
 
 import { routeAgentRequest } from "@cloudflare/agents";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { ATTR } from "@forge/domain";
 import type { Env } from "./env";
 import { resolveProfile } from "./env";
 import { configureConsoleExporter, startSpan } from "./otel/console";
 import { SessionDO } from "./do/session";
+import { createContext } from "./api/context";
+import { appRouter } from "./api/router";
 
 // Export the DO class so the wrangler binding resolves it.
 export { SessionDO };
@@ -65,8 +68,17 @@ export default {
         }
       }
 
-      // --- Seam 1: tRPC API (§5.6) + Seam 4 webhooks (§8) ------------------
-      // 404 until §5.6 wires the router; /api/ops/health above is the live route.
+      // --- Seam 1: tRPC API (§5.6) ------------------------------------------
+      // /api/* (except /api/ops/* which is seam 6 above) routes to tRPC v11.
+      if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/ops/")) {
+        span.setAttribute("http.status", 200);
+        return fetchRequestHandler({
+          endpoint: "/api",
+          req: request,
+          router: appRouter,
+          createContext: (opts) => createContext({ req: opts.req, env }),
+        });
+      }
       span.setAttribute("http.status", 404);
       return jsonResponse({ error: "not_found", path: url.pathname }, 404);
     } catch (err) {

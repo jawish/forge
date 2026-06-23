@@ -70,17 +70,33 @@ describe("seam 2 — SessionDO spawn + status_history (§5.1, §5.2)", () => {
   });
 });
 
+/**
+ * Assert a promise rejects, using try/catch (not `expect().rejects`) so the RPC
+ * layer's promise rejection isn't logged as an unhandled error before the
+ * matcher catches it. The DO RPC throws IllegalTransitionError across the
+ * boundary; this swallows it cleanly.
+ */
+async function assertRejects(p: Promise<unknown>): Promise<void> {
+  let threw = false;
+  try {
+    await p;
+  } catch {
+    threw = true;
+  }
+  expect(threw).toBe(true);
+}
+
 describe("seam 2 — transition legality via the state machine (§5.3)", () => {
   it("rejects illegal transitions (queued -> merged skips the path)", async () => {
     const id = `do_illegal_${Date.now()}`;
     await session(id).spawn({ repoId: "r", branch: "b", createdByUserId: "u" });
-    await expect(session(id).transitionTo({ status: "merged" }, "skip")).rejects.toThrow();
+    await assertRejects(session(id).transitionTo({ status: "merged" }, "skip"));
   });
 
   it("rejects queued -> ready_for_pr (must go via active)", async () => {
     const id = `do_illegal2_${Date.now()}`;
     await session(id).spawn({ repoId: "r", branch: "b", createdByUserId: "u" });
-    await expect(session(id).transitionTo({ status: "ready_for_pr" }, "skip")).rejects.toThrow();
+    await assertRejects(session(id).transitionTo({ status: "ready_for_pr" }, "skip"));
   });
 
   it("active -> ready_for_pr -> pr_open -> merged is the happy path", async () => {
@@ -108,7 +124,7 @@ describe("seam 2 — transition legality via the state machine (§5.3)", () => {
     const id = `do_term_${Date.now()}`;
     await session(id).spawn({ repoId: "r", branch: "b", createdByUserId: "u" });
     await session(id).cancel("human_abort");
-    await expect(session(id).transitionTo({ status: "active" }, "reopen")).rejects.toThrow();
+    await assertRejects(session(id).transitionTo({ status: "active" }, "reopen"));
   });
 
   it("IllegalTransitionError carries the right category + code", async () => {

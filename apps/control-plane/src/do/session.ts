@@ -23,7 +23,7 @@ import {
 } from "@forge/domain";
 import type { Env } from "../env";
 import { newCorrelationId, startSpan } from "../otel/console";
-import { SCHEMA_VERSION, SESSION_DO_MIGRATION_SQL } from "./schema";
+import { SCHEMA_VERSION, SESSION_DO_MIGRATION_STATEMENTS } from "./schema";
 
 /** Cached session_meta (status/activity/cost) — the live state. */
 export interface SessionDOState {
@@ -58,8 +58,11 @@ export class SessionDO extends Agent<Env, SessionDOState> {
   /** Run the migration once per DO instance (docs/12 §8 — code-level migration). */
   private ensureMigrated(): void {
     if (this.migrated) return;
-    // Multi-statement DDL via exec (this.sql is a tagged-template query helper).
-    this.ctx.storage.sql.exec(SESSION_DO_MIGRATION_SQL);
+    // sql.exec runs ONE statement per call (multi-statement strings no-op beyond
+    // the first), so exec each statement individually (docs/12 §8).
+    for (const stmt of SESSION_DO_MIGRATION_STATEMENTS) {
+      this.ctx.storage.sql.exec(stmt);
+    }
     this.migrated = true;
   }
 
