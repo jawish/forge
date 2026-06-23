@@ -1,0 +1,166 @@
+# Forge CI gate — risk-allocated per docs/16_Testing.md §4.
+# Blocking: tsc per-package, Oxlint+Oxfmt, all unit + seam tests.
+# The ~5 critical E2E paths are blocking via e2e-blocking.yml (turns on at §5.28).
+# Deploy pipelines (17 §5) are wired as triggers here; the deploy steps themselves
+# land with the workers in §4–§5 + Pulumi in §6.
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pin via mise; the action installs .mise.toml tools into PATH.
+  MISE_TRUSTED_FILES: ${{ vars.MISE_TRUSTED_FILES || '' }}
+
+jobs:
+  # --- §2.1 blocking gate -----------------------------------------------------
+  typecheck:
+    name: tsc --noEmit (per package)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+
+  lint:
+    name: Oxlint + Oxfmt
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  test-unit:
+    name: Unit tests (~15% — pure logic in domain/)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: mise test:unit
+
+  test-seam:
+    name: Seam tests (~80% — real DO/router/harness via miniflare)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      # mise test runs the full suite; seam tests are the bulk (16 §1).
+      - run: mise test
+
+  # --- §2.2 blocking E2E (critical paths) — turns blocking at §5.28 ----------
+  e2e-blocking:
+    name: E2E (blocking critical paths)
+    needs: [typecheck, lint, test-unit, test-seam]
+    # Stays a non-failing gate until the web slice lands at §5.28; flip the
+    # `continue-on-error` + `if` once the critical paths exist.
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      # Critical paths (16 §4): login, create session, view session (WS connects),
+      # submit prompt, cancel session. Playwright drives these against the fast profile.
+      - run: echo "Blocking E2E runner stub — wired to the real suite at §5.28 (16 §4)"
+      - run: mise test:e2e
+        continue-on-error: true # §5.28 removes this once the 5 paths land
+
+  # --- §2.3 advisory E2E (non-blocking) --------------------------------------
+  e2e-advisory:
+    name: E2E (advisory — non-blocking)
+    needs: [typecheck, lint, test-unit, test-seam]
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: echo "Advisory E2E placeholder — the slower/flakier full suite (16 §1)"
+      - run: mise test:e2e
+        continue-on-error: true
+
+  # --- 17 §5 deploy pipeline triggers (deploys land with the workers) --------
+  # Wired as triggers now so the cadence is in place; actual wrangler/pulumi
+  # deploy steps are added in §4–§6. Non-blocking on the gate until they exist.
+  deploy-dev:
+    name: Deploy dev (on dev branch)
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    needs: [typecheck, lint, test-unit, test-seam]
+    runs-on: ubuntu-24.04
+    environment: dev
+    steps:
+      - run: echo "Dev deploy wired at §6 (wrangler deploy + pulumi up — 17 §5)"

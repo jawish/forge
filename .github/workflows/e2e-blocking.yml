@@ -1,0 +1,38 @@
+# Reusable blocking E2E workflow — the ~5 critical user paths (docs/16_Testing.md §4):
+#   1. login (CF Access flow)
+#   2. create session
+#   3. view session (live stream connects)
+#   4. submit prompt
+#   5. cancel session
+#
+# This is a reusable workflow called from ci.yml's `e2e-blocking` job. It is a
+# runner stub now (no Playwright tests yet — the web slice lands at §5.24+).
+# ci.yml removes its `continue-on-error` once the 5 paths land at §5.28, making
+# this a real blocking gate.
+name: E2E (blocking critical paths)
+
+on:
+  workflow_call:
+
+jobs:
+  critical-paths:
+    name: Run 5 critical E2E paths (Playwright vs fast profile)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - run: mise install
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/pnpm/store
+            node_modules
+            */node_modules
+            */*/node_modules
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm install --frozen-lockfile
+      - run: echo "Stub - real Playwright critical-path suite lands at checklist 5.28"
+      - run: mise test:e2e
+        continue-on-error: true # checklist 5.28: remove once the 5 paths exist and are green

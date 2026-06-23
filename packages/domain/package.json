@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "test:e2e": "echo 'no e2e in domain package' && exit 0"
   },
   "dependencies": {
     "smol-toml": "1.7.0",

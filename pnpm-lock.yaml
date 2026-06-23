@@ -30,6 +30,9 @@ importers:
       typescript:
         specifier: 7.0.1-rc
         version: 7.0.1-rc
+      vitest:
+        specifier: 4.1.9
+        version: 4.1.9(vite@8.1.0)
 
   apps/web:
     devDependencies:

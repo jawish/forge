@@ -8,15 +8,17 @@
     "dev": "echo 'control-plane dev wired in §4.2 (wrangler dev --env fast --local)' && exit 0",
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run",
-    "test:unit": "vitest run",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
     "test:watch": "vitest watch",
+    "test:e2e": "echo 'control-plane e2e (Playwright) wired at §5.28' && exit 0",
     "deploy": "echo 'control-plane deploy wired in §1.4 (mise deploy)' && exit 0"
   },
   "dependencies": {
     "@forge/domain": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "7.0.1-rc"
+    "typescript": "7.0.1-rc",
+    "vitest": "4.1.9"
   }
 }
