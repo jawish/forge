@@ -187,9 +187,9 @@
 - [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo.
 
 ### 8.3 Git & PR (Track D) — US-3.1/3.2
-- [ ] Human-approval gate (always on); PR via user's GitHub OAuth; branch `forge/<user>/<shortid>-<slug>`; body = session link + summary + artifacts + co-author.
-- [ ] GitHub webhooks: PR merged/closed → terminal transitions.
-- [ ] Bidirectional PR↔session links.
+- [x] Human-approval gate (always on); PR via user's GitHub OAuth; branch `forge/<user>/<shortid>-<slug>`; body = session link + summary + artifacts + co-author.
+- [x] GitHub webhooks: PR merged/closed → terminal transitions.
+- [x] Bidirectional PR↔session links.
 
 ### 8.4 Observability + safety (Track A+B) — `14`, `18`, ADR-0005
 - [ ] Session-scoped sampling + status-aware promotion (`14` §4): skeleton ~80%, full ~20% + high-sensitivity, promote-to-full on `failed`/`closed`.
