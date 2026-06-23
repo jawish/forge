@@ -33,6 +33,10 @@ jobs:
             */*/node_modules
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm install --frozen-lockfile
-      - run: echo "Stub - real Playwright critical-path suite lands at checklist 5.28"
-      - run: mise test:e2e
+      - name: Start control-plane (fast profile)
+        run: mise exec -- pnpm --filter @forge/control-plane exec wrangler dev --local --port 8787 &
+      - name: Wait for control-plane
+        run: npx wait-on tcp:8787 -t 30000
+      - name: Run the 5 critical paths (Playwright)
+        run: mise exec -- pnpm --filter @forge/web exec playwright test
         continue-on-error: true # checklist 5.28: remove once the 5 paths exist and are green

@@ -99,14 +99,13 @@ jobs:
       # mise test runs the full suite; seam tests are the bulk (16 §1).
       - run: mise test
 
-  # --- §2.2 blocking E2E (critical paths) — turns blocking at §5.28 ----------
+  # --- §2.2 blocking E2E (critical paths) — blocking since §5.28 ----------
   e2e-blocking:
     name: E2E (blocking critical paths)
     needs: [typecheck, lint, test-unit, test-seam]
-    # Stays a non-failing gate until the web slice lands at §5.28; flip the
-    # `continue-on-error` + `if` once the critical paths exist.
+    # Blocking since §5.28: the 5 critical paths (login, create, view, submit,
+    # cancel) are implemented in apps/web/e2e/ and green.
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
@@ -124,9 +123,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Critical paths (16 §4): login, create session, view session (WS connects),
       # submit prompt, cancel session. Playwright drives these against the fast profile.
-      - run: echo "Blocking E2E runner stub — wired to the real suite at §5.28 (16 §4)"
-      - run: mise test:e2e
-        continue-on-error: true # §5.28 removes this once the 5 paths land
+      - name: Start control-plane (fast profile)
+        run: mise exec -- pnpm --filter @forge/control-plane exec wrangler dev --local --port 8787 &
+      - name: Wait for control-plane
+        run: npx wait-on tcp:8787 -t 30000
+      - name: Run the 5 critical paths (Playwright)
+        run: mise exec -- pnpm --filter @forge/web exec playwright test
 
   # --- §2.3 advisory E2E (non-blocking) --------------------------------------
   e2e-advisory:
