@@ -53,6 +53,21 @@ export const gitConfigSchema = z.object({
   default_branch: z.string().min(1).default("main"),
 });
 
+/**
+ * Outbound Workers egress allowlist (docs/18 §5). Which host:port destinations
+ * the sandbox/MCPs may reach. Deny-by-default — anything not listed is blocked.
+ */
+export const egressConfigSchema = z.object({
+  allow: z.array(z.string()).default([]), // "host:port" globs, e.g. "registry.npmjs.org:443"
+});
+
+/**
+ * Credential injection map (docs/18 §6). Which Secrets-Store secret gets injected
+ * for which destination host. Values are secret *references* (resolved at call
+ * time), never raw values. `${user_id}` resolves to the session's user.
+ */
+export const credentialsConfigSchema = z.record(z.string(), z.string()).default({}); // "api.github.com" -> "github_oauth:${user_id}"
+
 // Absence (or null) of a defaulted section normalizes to {} before field defaults apply.
 const defaulted = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (v === undefined || v === null ? {} : v), schema);
@@ -65,6 +80,8 @@ const rawRepoConfigSchema = z.object({
   policy: defaulted(policyConfigSchema),
   paths: defaulted(pathsConfigSchema),
   git: defaulted(gitConfigSchema),
+  egress: defaulted(egressConfigSchema),
+  credentials: defaulted(credentialsConfigSchema),
 });
 
 /**
@@ -83,3 +100,5 @@ export type PolicyConfig = z.infer<typeof policyConfigSchema>;
 export type PathsConfig = z.infer<typeof pathsConfigSchema>;
 export type GitConfig = z.infer<typeof gitConfigSchema>;
 export type GitIdentityStrategy = z.infer<typeof gitIdentityStrategySchema>;
+export type EgressConfig = z.infer<typeof egressConfigSchema>;
+export type CredentialsConfig = z.infer<typeof credentialsConfigSchema>;

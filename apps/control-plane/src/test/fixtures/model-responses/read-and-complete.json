@@ -1,0 +1,17 @@
+{
+  "name": "read-file-then-complete-pr",
+  "description": "Canned sequence: model thinks, reads a file via tool call, then completes the PR. Drives a session to ready_for_pr (docs/10 §6 forge.completePR).",
+  "events": [
+    { "type": "thinking_delta", "text": "Let me look at the repository structure first." },
+    { "type": "tool_call", "toolName": "rg", "args": { "pattern": "TODO", "path": "src" } },
+    { "type": "thinking_delta", "text": "Found the issue. Applying a minimal fix and verifying." },
+    { "type": "tool_call", "toolName": "run_tests", "args": {} },
+    { "type": "thinking_delta", "text": "Tests pass. Staging the change." },
+    {
+      "type": "complete_pr",
+      "diffSummary": "Fixed the TODO in src/index.ts",
+      "commitSha": "abc1234"
+    },
+    { "type": "finish", "reason": "stop" }
+  ]
+}
