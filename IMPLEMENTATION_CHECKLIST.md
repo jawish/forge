@@ -207,7 +207,7 @@
 
 ## §9. Phase 2 slices (outline — re-plan when reached)
 
-- [ ] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6). *(Guard built — reviewAgentGate() + the configurable stuck thresholds; the Review-Agent itself (US-4.2 multi-model critique) is the Phase-2 widening.)*
+- [ ] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6). *(Guard + Review Agent built — reviewAgentGate() + runReviewAgent() multi-model critique + verdict/summary; Testo-style iteration is the Phase-2 widening.)*
 - [ ] Model router + context hygiene (RTK lesson); quotas + alerts. *(Router built — routeModel() 5-tier + fallback + cost estimate, docs/08 §6. Quotas built — D1 quota store: periodKey/checkQuotas/applyQuotaIncrement for team+user daily/weekly/monthly caps, docs/12 §3/§9. Context hygiene + Grafana anomaly alerts are the Phase-2 widening.)*
 - [ ] Linear/Grafana/Notion integrations; resilience (checkpoints, fallbacks); analytics v2; sub-sessions.
 - [ ] Self-service repo onboarding wizard (opens a PR on `.forge/config.toml`, `13` §2). *(Config generator built — generateRepoConfig() produces a valid config from wizard input; the PR-creation reuses §8.3.)*
