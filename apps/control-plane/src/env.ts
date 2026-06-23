@@ -39,6 +39,13 @@ export interface Env {
   // fast profile uses deterministic stubs.
   AI?: Ai;
   VECTORIZE?: VectorizeIndex;
+  // Real-profile dev-shared creds (§6.1). Bound from CF Secrets Store; absent in
+  // fast (the loop falls back to mocks pre-provisioning).
+  AI_GATEWAY_ENDPOINT?: string;
+  AI_GATEWAY_KEY?: string;
+  AI_GATEWAY_PROVIDER?: string;
+  SANDBOX_ACCOUNT_ID?: string;
+  SANDBOX_API_TOKEN?: string;
 }
 
 /**
@@ -61,25 +68,43 @@ export interface ProfileServices {
 let cachedServices: ProfileServices | null = null;
 
 /**
- * Build (and cache) the profile's runtime services. In fast: mocks. In real:
- * real impls (§6). The lazy import keeps node-only modules out of the worker
- * boot graph — the fast profile's LocalSandboxProvider uses child_process, which
-// only the local `wrangler dev` workerd (and the node test pool) can load.
+ * Build (and cache) the profile's runtime services. In fast: mocks. In real: real
+ * impls (§6) when creds are bound; falls back to mocks if creds are absent (so
+ * the loop is runnable without provisioning). Lazy import keeps node-only modules
+ * out of the worker boot graph — LocalSandboxProvider uses child_process, which
+ * only the local `wrangler dev` workerd (and the node test pool) can load.
  */
-export async function buildServices(profile: DevProfile): Promise<ProfileServices> {
+export async function buildServices(profile: DevProfile, env?: Env): Promise<ProfileServices> {
   if (cachedServices) return cachedServices;
-  if (profile === "real") {
-    // §6 replaces these with the real AI Gateway + CF Sandbox clients.
-    // Phase 0 §4–§5 build against fast; real falls back to the same mocks so the
-    // loop is runnable without creds. §6 swaps these to real impls.
-    const [{ LocalSandboxProvider }, { MockModelProvider }] = await Promise.all([
+  if (profile === "real" && env) {
+    // Real profile (§6): use CloudflareSandboxProvider + AiGatewayModelProvider
+    // when the dev-shared creds are bound. Fall back to mocks if absent so the
+    // loop is runnable pre-provisioning (§6.7 validation needs the real creds).
+    const useRealSandbox = Boolean(env.SANDBOX_ACCOUNT_ID && env.SANDBOX_API_TOKEN);
+    const useRealModel = Boolean(env.AI_GATEWAY_ENDPOINT && env.AI_GATEWAY_KEY);
+    const [localMod, mockMod, cfMod, gwMod] = await Promise.all([
       import("./sandbox/local-provider"),
       import("./model/mock-provider"),
+      useRealSandbox ? import("./sandbox/cloudflare-provider") : Promise.resolve(null),
+      useRealModel ? import("./model/ai-gateway-provider") : Promise.resolve(null),
     ]);
     cachedServices = {
       profile: "real",
-      sandbox: new LocalSandboxProvider(),
-      model: new MockModelProvider(),
+      sandbox:
+        cfMod && useRealSandbox
+          ? new cfMod.CloudflareSandboxProvider({
+              accountId: env.SANDBOX_ACCOUNT_ID!,
+              apiToken: env.SANDBOX_API_TOKEN!,
+            })
+          : new localMod.LocalSandboxProvider(),
+      model:
+        gwMod && useRealModel
+          ? new gwMod.AiGatewayModelProvider({
+              endpoint: env.AI_GATEWAY_ENDPOINT!,
+              apiKey: env.AI_GATEWAY_KEY!,
+              provider: env.AI_GATEWAY_PROVIDER ?? "anthropic",
+            })
+          : new mockMod.MockModelProvider(),
     };
   } else {
     const [{ LocalSandboxProvider }, { MockModelProvider }] = await Promise.all([
