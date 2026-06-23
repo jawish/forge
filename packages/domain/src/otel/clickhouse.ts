@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS forge.session_event (
 ENGINE = MergeTree
 PARTITION BY toYYYYMM(ts)
 ORDER BY (session_id, ts)
-TTL ts + INTERVAL 90 DAY;              -- raw 90 days; aggregates live longer (materialized views)
+TTL toDateTime(ts) + INTERVAL 90 DAY;  -- raw 90 days (DateTime64 → cast for TTL)
 `;
 
 /**

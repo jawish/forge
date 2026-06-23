@@ -1,0 +1,79 @@
+# Forge — local analytics/audit stack for the `real` dev profile (docs/09 §5, §6.5).
+#
+# Brings up ClickHouse (the analytics lake + observability store, docs/08 §14) so
+# the sanitization pipeline + session_event writes + Grafana dashboard queries are
+# testable locally without ClickHouse Cloud. The control-plane Worker writes via
+# the local OTel exporter (docs/14 §7) — `real` profile only; `fast` uses console.
+#
+# Usage:
+#   docker compose up -d clickhouse          # start ClickHouse
+#   mise dev:real                            # run the stack against it
+#
+# ClickHouse is on localhost:8123 (HTTP) + 9000 (native). Grafana (optional, for
+# the local dashboards) is on localhost:3001.
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    container_name: forge-clickhouse
+    ports:
+      - "8123:8123" # HTTP interface (queries + the OTLP HTTP ingest below)
+      - "9000:9000" # native TCP interface
+    environment:
+      # Single-node, no auth locally (dev only — prod is ClickHouse Cloud, docs/17).
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      # Init scripts run on first start (create the forge db + session_event table).
+      - ./infra/clickhouse/init:/docker-entrypoint-initdb.d:ro
+      - forge-clickhouse-data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # OTel collector — receives OTLP from the control-plane Worker (real profile)
+  # and writes to local ClickHouse. In `fast`, the Worker's console exporter is
+  # used instead; this only runs for `real` (docs/14 §7).
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    container_name: forge-otel-collector
+    profiles: ["real"] # opt-in: `docker compose --profile real up`
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317" # OTLP gRPC (the Worker's exporter)
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - ./infra/otel/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  # Optional: local Grafana wired to ClickHouse for the 5 dashboards (infra/grafana/).
+  # Uncomment to view dashboards locally (docs/14 §7 — optional for normal dev).
+  grafana:
+    image: grafana/grafana:12.0.0
+    profiles: ["dashboards"] # opt-in: `docker compose --profile dashboards up`
+    container_name: forge-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards/forge:ro
+      - forge-grafana-data:/var/lib/grafana
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+volumes:
+  forge-clickhouse-data:
+  forge-grafana-data:

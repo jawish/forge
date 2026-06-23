@@ -1,0 +1,43 @@
+# Local OTel collector for the `real` dev profile (docs/14 §7, docs/09 §5).
+# Receives OTLP from the control-plane Worker (the `real`-profile OTel exporter
+# points here) and writes to local ClickHouse. In `fast`, the Worker's console
+# exporter is used instead — no collector needed.
+#
+# ClickStack in prod auto-creates the standard otel_traces/otel_logs/otel_metrics
+# tables (docs/14 §5); locally the collector writes to the forge.session_event
+# table via the clickhouse exporter's logs_to_columns mapping. Sanitization
+# happens BEFORE the write (docs/18 Part A — the Worker constructs the projection;
+# the collector forwards it).
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+
+exporters:
+  clickhouse:
+    # The local ClickHouse service (docs/12 §5 forge.session_event table).
+    endpoint: tcp://clickhouse:9000
+    database: forge
+    username: default
+    password: ""
+    # Write traces to ClickHouse. The forge.session_event table is the sanitized
+    # projection; ClickStack's auto otel_traces table is used for raw traces.
+    traces_table_name: forge.session_event
+    timeout: 10s
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [clickhouse, debug]
