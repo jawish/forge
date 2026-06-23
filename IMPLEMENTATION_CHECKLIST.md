@@ -75,14 +75,14 @@
 
 **Spec:** `09` §5 (two profiles), `16` §3 (miniflare).
 
-- [ ] **4.1** `apps/control-plane/wrangler.jsonc`: `main`, compatibility_date, DO namespace `SESSION_DO`, D1/R2/KV/Queues bindings as **local** (miniflare-emulated). `vars.FORGE_DEV_PROFILE="fast"`.
-- [ ] **4.2** `apps/control-plane/package.json` dev script: `wrangler dev --env fast --local`.
-- [ ] **4.3** **`LocalSandboxProvider`** (implements the thin provider interface from ADR-0001): `provision`, `exec`, `snapshot`, `restore`, `destroy` → runs commands in a local subprocess via `child_process`. Path-scoped to a temp workdir. This same interface is what `CloudflareSandboxProvider` (§6.3) implements.
-- [ ] **4.4** **`MockModelProvider`** behind the AI Gateway interface: `stream(input)` yields canned events from fixtures (`16` §2 `model-responses/`). Seed 2–3 fixtures: a thinking+tool-call+completion, a request-human-input, a complete-PR.
-- [ ] **4.5** Profile switch: `FORGE_DEV_PROFILE` selects provider/model/otel-exporter via a small factory in `apps/control-plane/src/env.ts`.
-- [ ] **4.6** OTel console exporter wired (`14` §7): every span logs to terminal with `forge.*` attrs.
-- [ ] **4.7** **Validate:** `mise dev` starts workerd <30s; hitting `/api/ops/health` returns 200; spans print to the terminal. **No credentials required.**
-- [ ] **4.8** Miniflare seam-test harness (`16` §3): `getMiniflareBindings()` helper used by all later seam tests.
+- [x] **4.1** `apps/control-plane/wrangler.jsonc`: `main`, compatibility_date, DO namespace `SESSION_DO`, D1/R2/KV/Queues bindings as **local** (miniflare-emulated). `vars.FORGE_DEV_PROFILE="fast"`.
+- [x] **4.2** `apps/control-plane/package.json` dev script: `wrangler dev --env fast --local`.
+- [x] **4.3** **`LocalSandboxProvider`** (implements the thin provider interface from ADR-0001): `provision`, `exec`, `snapshot`, `restore`, `destroy` → runs commands in a local subprocess via `child_process`. Path-scoped to a temp workdir. This same interface is what `CloudflareSandboxProvider` (§6.3) implements.
+- [x] **4.4** **`MockModelProvider`** behind the AI Gateway interface: `stream(input)` yields canned events from fixtures (`16` §2 `model-responses/`). Seed 2–3 fixtures: a thinking+tool-call+completion, a request-human-input, a complete-PR.
+- [x] **4.5** Profile switch: `FORGE_DEV_PROFILE` selects provider/model/otel-exporter via a small factory in `apps/control-plane/src/env.ts`.
+- [x] **4.6** OTel console exporter wired (`14` §7): every span logs to terminal with `forge.*` attrs.
+- [x] **4.7** **Validate:** `mise dev` starts workerd <30s; hitting `/api/ops/health` returns 200; spans print to the terminal. **No credentials required.**
+- [x] **4.8** Miniflare seam-test harness (`16` §3): `getMiniflareBindings()` helper used by all later seam tests.
 
 ---
 
