@@ -181,10 +181,10 @@
 - [ ] Seed Vectorize with pilot-repo descriptions/READMEs/commits. *(Needs Workers AI + Vectorize bindings provisioned — §6/prod; the router port + classifier are built and testable without them.)*
 
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
-- [ ] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`.
-- [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body.
-- [ ] code-server embed in-sandbox; one-click open from Web.
-- [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo.
+- [x] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`. *(path-scope + safe-edit + git-identity at spawn built; test-run goes via SandboxProvider.exec — wired)*
+- [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(R2 ARTIFACTS binding + artifact recording built; Browser Run needs the binding — §6)*
+- [ ] code-server embed in-sandbox; one-click open from Web. *(needs the CF Sandbox — §6)*
+- [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo. *(repo config [prewarm]/[mcp] parsed + validated; per-pilot-repo seeding needs real repos — pilot)*
 
 ### 8.3 Git & PR (Track D) — US-3.1/3.2
 - [x] Human-approval gate (always on); PR via user's GitHub OAuth; branch `forge/<user>/<shortid>-<slug>`; body = session link + summary + artifacts + co-author.
