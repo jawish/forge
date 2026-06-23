@@ -84,7 +84,7 @@ flowchart TD
 - **Default tools**: Per-repo MCP allowlist via the registry governance pipeline (`08` §13); lean for some repos, rich for others. Defer heavy tools until task requires.
 - **Image freshness & Config Loading**: Rebuild every 30min or on significant change (webhook or scheduled via Orchestrator). Per-repo default tools/MCPs, system prompt fragments, and tuning loaded at boot via mounted config file or OpenCode plugin init (versioned in REPO or REPO_IMAGE_VERSION for safe rollouts/A/B). "Eager load common; defer heavy" enforced by plugin. Delta sync safety: Plugin blocks writes until complete; on failure, session pauses with clear recovery option.
 
-**Sandboxes V2 Pattern (locked)**: Direct WS from the browser → session-gateway Worker (auth proxy) → Durable Object, using the **Cloudflare Agents SDK Client SDK** (handles presence + reconnection across browser refreshes). No in-sandbox HTTP server. Result: time-to-interactive 6.5s → 2s. Fewer moving parts, better traces. See `08_Tech_Stack.md` §7 and ADR-0004.
+**Sandboxes V2 Pattern (locked)**: Direct WS from the browser → control-plane Worker `/ws/:sessionId` route (auth proxy) → Durable Object, using the **Cloudflare Agents SDK Client SDK** (handles presence + reconnection across browser refreshes). The WS gateway is a *route* on the control-plane Worker, not a separate Worker (see `09_Project_Structure.md` §3 — 2-Worker topology). No in-sandbox HTTP server. Result: time-to-interactive 6.5s → 2s. Fewer moving parts, better traces. See `08_Tech_Stack.md` §7 and ADR-0004.
 
 ## 4. Session Data Model & State (Enriched for Analytics, Replay, Audit & Ops)
 **Rationale (post deep-dive)**: The original simplified ERD was insufficient for Ramp-style rich dataset needs (800k sessions, 30M tool calls, insights on failures/hallucinations/tool rework), full replay/debugging, compliance audit logs, cost attribution, sub-task lineage, PR linkage, and image versioning. We validated via domain modeling (Python dataclasses experiment confirmed easy extension of SESSION with outcome/cost/pr fields enables key queries like "avg cost per merged PR by repo"). 
@@ -104,7 +104,8 @@ erDiagram
         string id PK
         string repo_id FK
         string branch
-        string status "in_progress|ready_for_pr|pr_created|merged|failed|no_change|cancelled"
+        string status "queued|active|ready_for_pr|pr_open|merged|closed|no_change|failed|cancelled"
+        string activity "provisioning|running|awaiting_input|paused|stuck (only when status=active; see 11_State_Model.md)"
         string created_by_user_id
         json participants
         timestamp created_at

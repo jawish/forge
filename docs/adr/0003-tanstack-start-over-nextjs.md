@@ -16,4 +16,4 @@ TanStack Start gives a type-safe, full-stack framework built on TanStack Router 
 ## Consequences
 
 - Smaller ecosystem than Next.js; fewer copy-paste examples for niche problems. Mitigated by TanStack's active maintenance and Cloudflare's endorsement.
-- Realtime browser→server transport still goes through the standard CF pattern (browser → Worker auth-proxy → Durable Object). TanStack Start's Worker handles HTTP + app serving; a dedicated session-gateway Worker (service binding) handles the WS upgrade to the DO. Two Workers, one Pulumi deployment unit.
+- Realtime browser→server transport still goes through the standard CF pattern (browser → Worker auth-proxy → Durable Object). The control-plane Worker handles both the HTTP API and the WS gateway as routes; the web Worker (TanStack Start) serves the UI. Two Workers total, split by deployment cadence — see `09_Project_Structure.md`.

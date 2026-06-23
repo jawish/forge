@@ -190,7 +190,7 @@ Three layers, each doing one job:
 | **Control-plane transport** | Cloudflare Agents SDK + Client SDK | DO-based stateful orchestration; WS hibernation; typed RPC; native presence + reconnection across browser refreshes. |
 | **UI streaming** | Thin typed React rendering on Client SDK events | Hand-rolled but thin; consumes the Client SDK's typed event stream directly. No TanStack AI (AG-UI protocol bridge would be overhead for a closed internal platform). |
 
-**Browser → DO path**: browsers cannot connect directly to a DO (CF security constraint). The path is **browser → Worker (auth proxy) → DO**. TanStack Start's Worker handles HTTP + app serving; a dedicated **session-gateway Worker** (service binding) handles the WS upgrade to the DO. Two Workers, one Pulumi deployment unit.
+**Browser → DO path**: browsers cannot connect directly to a DO (CF security constraint). The path is **browser → Worker (auth proxy) → DO**. The control-plane Worker handles both the HTTP API and the WS gateway as routes (the WS upgrade is a route handler, not a separate Worker). Two Workers total: `web` (TanStack Start, serves UI, no DO bindings, fast deploy cadence) + `control-plane` (HTTP API + WS gateway + Slack bot + Session DOs + Queue/Workflow consumers — one trust domain, shared bindings, stable cadence). See `09_Project_Structure.md` for the topology.
 
 > See ADR-0004 for why TanStack AI and Flue were rejected.
 

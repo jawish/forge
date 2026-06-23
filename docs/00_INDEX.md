@@ -20,6 +20,17 @@ This suite provides a complete, production-ready specification for building and 
 6. **06_Adversarial_Review.md** — Independent critique of v0 design, identified gaps/risks, mitigations addressed in final
 7. **07_Implementation_Roadmap.md** — Phased rollout plan, milestones, success metrics, risks
 8. **08_Tech_Stack.md** — **Authoritative technology stack specification.** Single source of truth for all vendor/tooling decisions. *Supersedes vendor-specific references in 03/05/07 wherever they conflict.*
+9. **09_Project_Structure.md** — **Authoritative engineering structure.** Monorepo layout (apps/packages/infra), Worker topology (2 Workers split by deployment cadence), the unified `domain` package, build orchestration (pnpm + mise), and the two-profile local dev environment (`fast` / `real`).
+10. **10_API_Contracts.md** — The contract at each of Forge's six system seams (Web↔control-plane via tRPC; control-plane↔DO in-process; browser↔DO via Agents SDK Client SDK; external webhooks via zod; agent↔control-plane via MCP tools; ops/debugging REST-ish).
+11. **11_State_Model.md** — **Authoritative session lifecycle.** Two-field state model: `status` (9 lifecycle values) + `activity` (5 sub-values when active). Full transition table with guards and side effects.
+12. **12_Data_Schemas.md** — Concrete DDL for all four stores: DO SQLite (hot, source-of-truth), D1 (control-plane OLTP index), R2 (blobs + WORM audit), ClickHouse (analytics lake + observability). Includes DO API surface and migration strategy.
+13. **13_Configuration.md** — Three config domains (repo / org / env). Repo config = `.forge/config.toml` (TOML, versioned in git); Web UI is a PR-generating editor. Full schema with build-time vs runtime field split.
+14. **14_Observability_Conventions.md** — OTel attribute namespace (`forge.*` + semantic conventions), service names, span naming, and the session-scoped head sampling + status-aware promotion strategy (3.6× span reduction, 100% failure capture).
+15. **15_Error_Model.md** — Contract-first error model: 7 categories (decision-types, not failure-modes) + organic domain codes. Per-seam integration (tRPC, MCP, user-facing, auto-retry).
+16. **16_Testing.md** — Integration-heavy "testing trophy" shape (seam tests = 80%) with mocked-externals-at-the-boundary convention. Risk-allocated CI gate (strict on deterministic seams, advisory E2E, staging for real-model).
+17. **17_Environments.md** — 3 envs (dev/staging/prod), no per-engineer cloud. Pulumi stacks per env. Sanitized prod → staging nightly. Pulumi-managed secrets with CI gate + 2-person prod approval.
+18. **18_Security_Contracts.md** — Two security primitives: (A) sanitization pipeline (projection-first — schema excludes sensitive fields by construction; layered redaction only for the few included content fields) and (B) Outbound Workers boundary (per-sandbox + per-MCP manifests, deny-by-default, per-call credential injection).
+19. **19_Integration_Contracts.md** — Two integration surfaces: (A) Slack classifier (two-stage: intent filter + repo router; tiered confidence: auto-spawn/confirm/disambiguate/explain) and (B) extension model (one seam — MCP only; OpenCode integration via configure-not-fork; `plugin-sdk` = MCP author SDK).
 
 Companion files (root):
 - **`CONTEXT.md`** — Glossary of canonical domain terms (Session, Prompt, Tool Call, Artifact, Sandbox, Trust Anchor, etc.). Refer here when a term is ambiguous.
