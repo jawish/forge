@@ -113,27 +113,27 @@
 ### 5c. WS gateway (seam 3)
 **Spec:** `10` §4, `03` §3 (Sandboxes V2 pattern).
 
-- [ ] **5.11** `/ws/:sessionId` route: auth the upgrade (CF Access identity), forward to `env.SESSION_DO.get(sessionId).fetch(request)`. DO holds the WS open.
-- [ ] **5.12** Server→client events typed by `domain` (`10` §4): state snapshot, thinking delta, tool-call, artifact, presence. DO emits on state changes + agent callbacks.
-- [ ] **5.13** Client→server calls: submit prompt, pause, resume, cancel (via Agents SDK Client SDK).
-- [ ] **5.14** **Seam test:** open a WS to a spawned DO via miniflare; submit a prompt; assert the expected event sequence streams back.
+- [x] **5.11** `/ws/:sessionId` route: auth the upgrade (CF Access identity), forward to `env.SESSION_DO.get(sessionId).fetch(request)`. DO holds the WS open.
+- [x] **5.12** Server→client events typed by `domain` (`10` §4): state snapshot, thinking delta, tool-call, artifact, presence. DO emits on state changes + agent callbacks.
+- [x] **5.13** Client→server calls: submit prompt, pause, resume, cancel (via Agents SDK Client SDK).
+- [x] **5.14** **Seam test:** open a WS to a spawned DO via miniflare; submit a prompt; assert the expected event sequence streams back.
 
 ### 5d. Platform-provided MCP tools (seam 5)
 **Spec:** `19` §8, `10` §6.
 
-- [ ] **5.15** One MCP server in the control-plane Worker exposing `forge.reportStatus`, `forge.createArtifact`, `forge.requestHumanInput`, `forge.completePR`. Each calls the matching DO method.
-- [ ] **5.16** Agent-facing errors return `{category, retryable, message}` only (`15` §4) — no stack, no secrets.
-- [ ] **5.17** **Seam test:** call each MCP tool against a real DO; assert DO state mutates correctly (e.g., `completePR` → `status='ready_for_pr'`, activity null).
+- [x] **5.15** One MCP server in the control-plane Worker exposing `forge.reportStatus`, `forge.createArtifact`, `forge.requestHumanInput`, `forge.completePR`. Each calls the matching DO method.
+- [x] **5.16** Agent-facing errors return `{category, retryable, message}` only (`15` §4) — no stack, no secrets.
+- [x] **5.17** **Seam test:** call each MCP tool against a real DO; assert DO state mutates correctly (e.g., `completePR` → `status='ready_for_pr'`, activity null).
 
 ### 5e. Sandbox provisioning + agent harness config (seam 5, Track C)
 **Spec:** `19` §7 (configure don't fork), `18` Part B (egress/creds), `08` §3.
 
-- [ ] **5.18** Provider interface (ADR-0001): `provision(spec)`, `exec(cmd)`, `snapshot()`, `restore(ref)`, `destroy()`. `LocalSandboxProvider` (§4.3) is the `fast` impl.
-- [ ] **5.19** On `spawn`: provision via provider → inject session-scoped git identity (`user.name`/`user.email`) → apply egress allowlist + credential manifest from `.forge/config.toml` `[egress]`/`[credentials]` (Outbound Workers boundary, `18` §5). In `fast`, the "boundary" is an in-process allowlist check on `LocalSandboxProvider` exec.
-- [ ] **5.20** At spawn, write an OpenCode MCP-consumer config (temp file in the sandbox) listing the platform MCP endpoint + registry allowlist (empty for now). **No OpenCode fork, no plugin code** (`19` §7).
-- [ ] **5.21** Boot the agent harness pointed at that config. In `fast`, the "harness" is `MockModelProvider` driving the loop; in `real` (§6) it's real OpenCode.
-- [ ] **5.22** Agent loop drives transitions: model streams thinking → harness calls tools → `forge.reportStatus`/`completePR` arrive → DO transitions accordingly.
-- [ ] **5.23** **Seam test (harness + mock model, `16` §3):** spawn → mock model streams a canned "read file + completePR" sequence → assert DO reaches `ready_for_pr` with an artifact recorded.
+- [x] **5.18** Provider interface (ADR-0001): `provision(spec)`, `exec(cmd)`, `snapshot()`, `restore(ref)`, `destroy()`. `LocalSandboxProvider` (§4.3) is the `fast` impl.
+- [x] **5.19** On `spawn`: provision via provider → inject session-scoped git identity (`user.name`/`user.email`) → apply egress allowlist + credential manifest from `.forge/config.toml` `[egress]`/`[credentials]` (Outbound Workers boundary, `18` §5). In `fast`, the "boundary" is an in-process allowlist check on `LocalSandboxProvider` exec.
+- [x] **5.20** At spawn, write an OpenCode MCP-consumer config (temp file in the sandbox) listing the platform MCP endpoint + registry allowlist (empty for now). **No OpenCode fork, no plugin code** (`19` §7).
+- [x] **5.21** Boot the agent harness pointed at that config. In `fast`, the "harness" is `MockModelProvider` driving the loop; in `real` (§6) it's real OpenCode.
+- [x] **5.22** Agent loop drives transitions: model streams thinking → harness calls tools → `forge.reportStatus`/`completePR` arrive → DO transitions accordingly.
+- [x] **5.23** **Seam test (harness + mock model, `16` §3):** spawn → mock model streams a canned "read file + completePR" sequence → assert DO reaches `ready_for_pr` with an artifact recorded.
 
 ### 5f. Minimal `web` Worker (Track D)
 **Spec:** `09` §3 (web Worker, no DO bindings), `08` §8 (TanStack Start).

@@ -4,8 +4,12 @@
   "private": true,
   "description": "Forge control-plane Worker — tRPC API + WS gateway + Slack bot + Session DO + Queue/Workflow consumers (docs/09 §3).",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./router": "./src/api/router.ts"
+  },
   "scripts": {
-    "dev": "wrangler dev --env fast --local",
+    "dev": "wrangler dev --local",
     "dev:real": "wrangler dev --env real --local",
     "build": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
