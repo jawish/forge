@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/vitest-pool-workers" />
 import { describe, expect, it } from "vitest";
 import { exports } from "cloudflare:workers";
+import { drainAgentTurns } from "../src/api/routers/prompt";
 
 // Seam 1 — tRPC router (docs/10 §2, checklist §5.6–5.10).
 // Drives the procedures over real HTTP (fetchRequestHandler) against the real DO
@@ -68,6 +69,9 @@ describe("seam 1 — tRPC session.create / get / cancel (§5.6, §5.10)", () => 
       content: "fix the typo",
     })) as { promptId: string };
     expect(submitted.promptId).toMatch(/^p_/);
+    // prompt.submit fires a background agent turn; drain it so its dangling
+    // promise doesn't block the Vite server teardown.
+    await drainAgentTurns();
   });
 
   it("invalid input is rejected (4xx — zod validation)", async () => {

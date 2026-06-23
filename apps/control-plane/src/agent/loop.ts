@@ -45,8 +45,18 @@ export async function runAgentTurn(opts: {
   const stub = opts.env.SESSION_DO.idFromName(opts.sessionId);
   const doStub = opts.env.SESSION_DO.get(stub) as unknown as AgentDOStub;
 
+  // Activate the session before running the agent (docs/11 §3: queued → active).
+  // Spawn leaves the session in queued; the first prompt transitions to active.
+  // reportStatus(activity=provisioning) is the entry; the model stream then moves
+  // it to running. This is idempotent if the session is already active.
+  const current = await doStub.getStatus();
+  if (current.status === "queued") {
+    await doStub
+      .transitionTo({ status: "active", activity: "provisioning" }, "agent_activate")
+      .catch(() => {});
+  }
+
   // Provisioning -> running (the harness "starts" — first thinking event).
-  // The spawn flow already queued->active(provisioning); mark running on first event.
   let markedRunning = false;
 
   for await (const event of opts.model.stream({ prompt: opts.prompt, model: "mock" })) {
