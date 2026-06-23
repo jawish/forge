@@ -7,7 +7,7 @@
 // transitionTo. §5.4: activity null-unless-active invariant. Side effects
 // (sandbox destroy, audit, Slack) are delegated to ports so they're testable.
 
-import { Agent } from "@cloudflare/agents";
+import { Agent, type Connection, type ConnectionContext, type WSMessage } from "@cloudflare/agents";
 import {
   ATTR,
   ForgeError,
@@ -18,6 +18,8 @@ import {
   isValidState,
   legalActivityFor,
   transitionSideEffects,
+  type ClientToServerCall,
+  type ServerToClientEvent,
   type SessionActivity,
   type SessionStatus,
 } from "@forge/domain";
@@ -70,8 +72,75 @@ export class SessionDO extends Agent<Env, SessionDOState> {
     // no-op stub; §5 wires analytics projection here
   }
 
-  override onConnect(): void {
-    // §5.11–5.13 wires the WS event stream
+  /** A WS connection joined — send a state snapshot (docs/10 §4, §5.12). */
+  override async onConnect(connection: Connection, _ctx: ConnectionContext): Promise<void> {
+    const meta = this.getMetaRow();
+    if (meta) {
+      const status = await this.getStatus();
+      const snapshot: ServerToClientEvent = {
+        type: "state_snapshot",
+        sessionId: meta.id,
+        status: status.status,
+        activity: status.activity,
+        costUsd: status.costUsd,
+        tokensIn: status.tokensIn,
+        tokensOut: status.tokensOut,
+        history: { prompts: [], toolCalls: [], artifacts: [] },
+      };
+      connection.send(JSON.stringify(snapshot));
+    }
+  }
+
+  /** Client → server calls over the WS (docs/10 §4, §5.13). */
+  override async onMessage(_connection: Connection, message: WSMessage): Promise<void> {
+    let call: ClientToServerCall;
+    try {
+      const raw = typeof message === "string" ? message : String(message);
+      call = JSON.parse(raw) as ClientToServerCall;
+    } catch {
+      return; // ignore malformed
+    }
+    switch (call.type) {
+      case "submit_prompt":
+        await this.submitPrompt({
+          userId: call.userId,
+          content: call.content,
+          modelParams: call.modelParams,
+        });
+        break;
+      case "pause":
+        await this.pause();
+        break;
+      case "resume":
+        await this.resume();
+        break;
+      case "cancel":
+        await this.cancel(call.reason ?? "client_ws_cancel");
+        break;
+      default:
+        break;
+    }
+    // After any client call, broadcast the updated state (docs/10 §4 — DO emits
+    // on state changes; multiplayer gets presence-free updates).
+    this.broadcastState();
+  }
+
+  /** Broadcast the current state as a state_snapshot to all connected clients. */
+  private async broadcastState(): Promise<void> {
+    const meta = this.getMetaRow();
+    if (!meta) return;
+    const status = await this.getStatus();
+    const snapshot: ServerToClientEvent = {
+      type: "state_snapshot",
+      sessionId: meta.id,
+      status: status.status,
+      activity: status.activity,
+      costUsd: status.costUsd,
+      tokensIn: status.tokensIn,
+      tokensOut: status.tokensOut,
+      history: { prompts: [], toolCalls: [], artifacts: [] },
+    };
+    this.broadcast(JSON.stringify(snapshot));
   }
 
   // --- Lifecycle (docs/12 §2 DO API) ---------------------------------------

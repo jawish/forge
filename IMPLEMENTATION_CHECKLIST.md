@@ -95,20 +95,20 @@
 ### 5a. `SessionDO` + state machine (seam 2)
 **Spec:** `11` (state model), `12` §2 (DO SQLite + API).
 
-- [ ] **5.1** `apps/control-plane/src/do/session.ts`: `SessionDO` class. `migration` method creates the `12` §2 SQLite tables (`session_meta`, `status_history`, `prompt`, `tool_call`, `artifact`, `cost_event`) with a `schema_version` row.
-- [ ] **5.2** Implement the DO API (`12` §2): `spawn`, `transitionTo`, `cancel`, `submitPrompt`, `pause`, `resume`, `getStatus`, `getHistory`, `reportStatus`, `createArtifact`, `requestHumanInput`, `completePR`.
-- [ ] **5.3** `transitionTo` uses the `domain` state machine (`§3.7`): validates legality (else `IllegalTransitionError`), writes `status_history`, runs side effects (start/stop cost counter, audit event, sandbox destroy on terminal — these call injected ports so they're testable).
-- [ ] **5.4** Activity enforcement: `activity` nullable; non-null only when `status==='active'` (`11` §1) — enforced in code, not just CHECK.
-- [ ] **5.5** **Seam test:** instantiate DO via miniflare `DurableObjectStub`; `spawn` → assert `status='queued'` then `active`; exercise every legal transition; assert every illegal one throws; assert `status_history` rows. (`16` §3 pattern.)
+- [x] **5.1** `apps/control-plane/src/do/session.ts`: `SessionDO` class. `migration` method creates the `12` §2 SQLite tables (`session_meta`, `status_history`, `prompt`, `tool_call`, `artifact`, `cost_event`) with a `schema_version` row.
+- [x] **5.2** Implement the DO API (`12` §2): `spawn`, `transitionTo`, `cancel`, `submitPrompt`, `pause`, `resume`, `getStatus`, `getHistory`, `reportStatus`, `createArtifact`, `requestHumanInput`, `completePR`.
+- [x] **5.3** `transitionTo` uses the `domain` state machine (`§3.7`): validates legality (else `IllegalTransitionError`), writes `status_history`, runs side effects (start/stop cost counter, audit event, sandbox destroy on terminal — these call injected ports so they're testable).
+- [x] **5.4** Activity enforcement: `activity` nullable; non-null only when `status==='active'` (`11` §1) — enforced in code, not just CHECK.
+- [x] **5.5** **Seam test:** instantiate DO via miniflare `DurableObjectStub`; `spawn` → assert `status='queued'` then `active`; exercise every legal transition; assert every illegal one throws; assert `status_history` rows. (`16` §3 pattern.)
 
 ### 5b. tRPC router (seam 1)
 **Spec:** `10` §2.
 
-- [ ] **5.6** `apps/control-plane/src/api/router.ts` + `routers/{session,prompt}.ts`. `fetchEdgeRequest` adapter. Procedures: `session.create`, `session.get`, `session.cancel`, `prompt.submit`. Input = zod from `domain`.
-- [ ] **5.7** Auth middleware stub: reads CF Access identity header → `forge.user.id`; reject if absent (`10` §2). Real CF Access wiring is §8; stub returns a dev user in `fast`.
-- [ ] **5.8** Procedures call `env.SESSION_DO.get(id).<method>` directly (in-process, seam 2).
-- [ ] **5.9** Error mapping: catch `ForgeError` → tRPC code per `15` §4; attach `data.{category,retryable,correlationId,code}`.
-- [ ] **5.10** **Seam test:** miniflare + real DO; assert `session.create` returns a sessionId, `session.get` reflects state, `cancel` transitions to terminal.
+- [x] **5.6** `apps/control-plane/src/api/router.ts` + `routers/{session,prompt}.ts`. `fetchEdgeRequest` adapter. Procedures: `session.create`, `session.get`, `session.cancel`, `prompt.submit`. Input = zod from `domain`.
+- [x] **5.7** Auth middleware stub: reads CF Access identity header → `forge.user.id`; reject if absent (`10` §2). Real CF Access wiring is §8; stub returns a dev user in `fast`.
+- [x] **5.8** Procedures call `env.SESSION_DO.get(id).<method>` directly (in-process, seam 2).
+- [x] **5.9** Error mapping: catch `ForgeError` → tRPC code per `15` §4; attach `data.{category,retryable,correlationId,code}`.
+- [x] **5.10** **Seam test:** miniflare + real DO; assert `session.create` returns a sessionId, `session.get` reflects state, `cancel` transitions to terminal.
 
 ### 5c. WS gateway (seam 3)
 **Spec:** `10` §4, `03` §3 (Sandboxes V2 pattern).
