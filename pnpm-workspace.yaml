@@ -1,3 +1,11 @@
 packages:
   - apps/*
   - packages/*
+  - infra/pulumi
+
+# Native build scripts to allow (pnpm 10 blocks install scripts by default).
+# esbuild + workerd are required for `wrangler dev` (workerd local runtime).
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - sharp

@@ -1,0 +1,5 @@
+# Forge dev stack config (docs/17 §1 — shared integration env).
+# Secrets are set via `pulumi config set-secret <key> --stack dev` (encrypted,
+# stored in CF Secrets Store — docs/17 §4). Never commit secret values.
+config:
+  forge-infra:cloudflare:accountId: "SET_VIA_pulumi_config_set"
