@@ -1,0 +1,105 @@
+# Image build pipeline — unified OCI artifact governance (ADR-0007, docs/08 §15, checklist §7.2).
+# Builds the test-repo sandbox images, scans them with Trivy, signs with cosign,
+# and pushes to GHCR. The same pipeline covers MCP servers (docs/19 §10). Verified
+# at spawn (cosign signature check, docs/08 §3 "rogue image" prevention).
+#
+# Prerequisites (set in repo secrets): GHCR_TOKEN, COSIGN_PRIVATE_KEY,
+# COSIGN_PASSWORD. Rekor anchors the signature (ADR-0005).
+name: Build + sign sandbox images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/images/sandboxes/test-repos/**"
+      - ".github/workflows/build-images.yml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # The org/repo owning the GHCR namespace — set per deployment.
+  IMAGE_PREFIX: forge
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # cosign keyless signing (OIDC)
+    strategy:
+      matrix:
+        repo: [python-service, ts-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set tags
+        id: tags
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.repo }}" >> "$GITHUB_OUTPUT"
+          echo "digest=" >> "$GITHUB_OUTPUT"
+
+      - name: Build the image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/images/sandboxes/test-repos/${{ matrix.repo }}
+          file: infra/images/sandboxes/test-repos/${{ matrix.repo }}/.forge/Dockerfile
+          tags: ${{ steps.tags.outputs.image }}:latest,${{ steps.tags.outputs.image }}:${{ github.sha }}
+          load: true # load into docker for scanning + signing before push
+
+      - name: Generate CycloneDX SBOM (docs/08 §15)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.tags.outputs.image }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.repo }}.json
+
+      - name: Trivy vulnerability scan (docs/08 §15)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.tags.outputs.image }}:${{ github.sha }}
+          format: json
+          exit-code: "1" # fail on HIGH/CRITICAL (the governance gate, ADR-0007)
+          severity: HIGH,CRITICAL
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the image
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/images/sandboxes/test-repos/${{ matrix.repo }}
+          file: infra/images/sandboxes/test-repos/${{ matrix.repo }}/.forge/Dockerfile
+          tags: ${{ steps.tags.outputs.image }}:latest,${{ steps.tags.outputs.image }}:${{ github.sha }}
+          push: true
+
+      - name: Install cosign (docs/08 §5, ADR-0005)
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign the image with cosign (keyless via OIDC — Rekor-anchored)
+        run: |
+          cosign sign --yes ${{ steps.tags.outputs.image }}@${{ steps.push.outputs.digest }}
+
+      - name: Verify the signature (the spawn-time check, docs/08 §3)
+        run: |
+          cosign verify \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            ${{ steps.tags.outputs.image }}@${{ steps.push.outputs.digest }}
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.repo }}
+          path: sbom-${{ matrix.repo }}.json
+
+      - name: Output the signed digest
+        run: |
+          echo "Built + signed + verified: ${{ steps.tags.outputs.image }}@${{ steps.push.outputs.digest }}"
+          echo "cosign signature anchored in Rekor (ADR-0005)."
