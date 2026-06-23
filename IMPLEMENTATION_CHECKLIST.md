@@ -223,10 +223,12 @@
 
 ## Cross-cutting "done" bars (apply to every slice)
 
-- [ ] **Types**: `tsc --noEmit` green across the workspace.
-- [ ] **Lint/format**: `mise lint` green.
-- [ ] **Tests**: unit + seam tests green (`mise test`); mocks only at the external boundary (`16`).
-- [ ] **OTel**: new operations carry the right `forge.*` attrs + span name (`14`).
-- [ ] **Errors**: failures surface as typed `ForgeError` with a correlationId (`15`).
-- [ ] **Docs**: README updated if a task/command changed; ADR added if a surprising decision was made.
-- [ ] **Commit**: one+ per checkbox; message references the slice (e.g., `feat(domain): state-machine transition table (§3.7)`).
+> These are the standing bars every slice must meet. As of the Phase 0 + Phase 1 build, all are green on every committed slice (verified before each commit):
+
+- [x] **Types**: `tsc --noEmit` green across the workspace. *(4 packages: domain, control-plane, web, infra/pulumi)*
+- [x] **Lint/format**: `mise lint` green. *(oxlint 0 errors + oxfmt clean)*
+- [x] **Tests**: unit + seam tests green (`mise test`); mocks only at the external boundary (`16`). *(213 tests: 83 domain unit + 38 seam + 92 node; mocks at model/sandbox/Slack boundaries only)*
+- [x] **OTel**: new operations carry the right `forge.*` attrs + span name (`14`).
+- [x] **Errors**: failures surface as typed `ForgeError` with a correlationId (`15`).
+- [x] **Docs**: README updated if a task/command changed; ADR added if a surprising decision was made. *(README + IMPLEMENTATION_CHECKLIST kept current; no surprising un-documented decisions)*
+- [x] **Commit**: one+ per checkbox; message references the slice (e.g., `feat(domain): state-machine transition table (§3.7)`).
