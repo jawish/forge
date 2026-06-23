@@ -193,9 +193,9 @@
 
 ### 8.4 Observability + safety (Track A+B) — `14`, `18`, ADR-0005
 - [ ] Session-scoped sampling + status-aware promotion (`14` §4): skeleton ~80%, full ~20% + high-sensitivity, promote-to-full on `failed`/`closed`.
-- [ ] Sanitization pipeline (`18` Part A): projection-first ClickHouse event; layered redaction; `SANITIZATION_FAILED` on unclassifiable.
+- [x] Sanitization pipeline (`18` Part A): projection-first ClickHouse event; layered redaction; `SANITIZATION_FAILED` on unclassifiable.
 - [ ] Audit: R2 Object Lock Compliance + Merkle chain + hourly Rekor anchor; Pipelines → ClickHouse copy.
-- [ ] Cost control v1 (`08` §17): DO cost counters (sync check pre-call), AI Gateway per-request cost, KV kill-switch.
+- [x] Cost control v1 (`08` §17): DO cost counters (sync check pre-call), AI Gateway per-request cost, KV kill-switch.
 - [ ] Grafana dashboards (`14` §6): session overview, agent behavior, cost, reliability, audit.
 
 ### 8.5 Onboarding

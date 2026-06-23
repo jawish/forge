@@ -23,6 +23,7 @@ import { FORGE_MCP_TOOLS, callTool } from "./mcp/tools";
 import { handleSlackEvent } from "./slack/handler";
 import { SLACK_SIGNATURE_HEADER, SLACK_TIMESTAMP_HEADER } from "./slack/verify";
 import { buildSlackPorts } from "./slack/ports";
+import { sessionIdFromBranch, webhookToTransition } from "./git/pr";
 
 // Export the DO class so the wrangler binding resolves it.
 export { SessionDO };
@@ -88,6 +89,49 @@ export default {
         const result = await callTool(body.tool, body.args, body.sessionId, env);
         span.setAttribute("http.status", result.ok ? 200 : 500);
         return jsonResponse(result, result.ok ? 200 : 500);
+      }
+
+      // --- Seam 4: GitHub webhooks (docs/11 §4, checklist §8.3) ------------
+      // /github/webhooks: PR merged/closed → terminal transitions on the
+      // matching session (matched by the forge/<user>/<shortid>-<slug> branch).
+      if (url.pathname === "/github/webhooks" && request.method === "POST") {
+        const body = (await request.json()) as {
+          action?: string;
+          pull_request?: {
+            number?: number;
+            html_url?: string;
+            merged?: boolean;
+            head?: { ref?: string };
+          };
+        };
+        const ref = body.pull_request?.head?.ref;
+        const shortid = ref ? sessionIdFromBranch(ref) : null;
+        if (body.action === "closed" && shortid) {
+          const transition = webhookToTransition({
+            action: body.action as "closed",
+            pull_request: {
+              number: body.pull_request?.number ?? 0,
+              html_url: body.pull_request?.html_url ?? "",
+              merged: body.pull_request?.merged ?? false,
+              head_ref: ref ?? "",
+            },
+          });
+          if (transition.status) {
+            // Match the session by its shortid prefix; transition to terminal.
+            // (Session name lookup via D1 index is §8 widening; here we transition
+            // any session whose name starts with the shortid.)
+            const sessionId = `sess_${shortid}`;
+            const idObj = env.SESSION_DO.idFromName(sessionId);
+            const stub = env.SESSION_DO.get(idObj) as unknown as {
+              transitionTo(to: { status: "merged" | "closed" }, reason: string): Promise<unknown>;
+            };
+            await stub.transitionTo({ status: transition.status }, transition.reason).catch(() => {
+              // No matching session / already terminal — ack the webhook anyway.
+            });
+          }
+        }
+        span.setAttribute("http.status", 200);
+        return jsonResponse({ ok: true });
       }
 
       // --- Seam 4: Slack Events API (docs/19 Part A, §8.1) -----------------
