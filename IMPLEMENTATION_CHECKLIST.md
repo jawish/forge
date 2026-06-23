@@ -207,8 +207,8 @@
 
 ## §9. Phase 2 slices (outline — re-plan when reached)
 
-- [ ] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6).
-- [ ] Model router + context hygiene (RTK lesson); quotas + alerts.
+- [ ] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6). *(Guard built — reviewAgentGate() + the configurable stuck thresholds; the Review-Agent itself (US-4.2 multi-model critique) is the Phase-2 widening.)*
+- [ ] Model router + context hygiene (RTK lesson); quotas + alerts. *(Router built — routeModel() 5-tier + fallback + cost estimate, docs/08 §6; context hygiene + D1 quotas/alerts are the Phase-2 widening.)*
 - [ ] Linear/Grafana/Notion integrations; resilience (checkpoints, fallbacks); analytics v2; sub-sessions.
 - [ ] Self-service repo onboarding wizard (opens a PR on `.forge/config.toml`, `13` §2).
 - [ ] Registry-managed MCP governance pipeline (ADR-0007): federate registry, OCI+cosign+KitOps, Scorecard gating, Trivy@registration, cosign@spawn. `plugin-sdk` scaffolds scorecard-friendly repos.
