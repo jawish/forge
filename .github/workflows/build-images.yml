@@ -31,7 +31,7 @@ jobs:
       matrix:
         repo: [python-service, ts-service]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set tags
         id: tags

@@ -19,7 +19,7 @@ jobs:
     name: Run 5 critical E2E paths (Playwright vs fast profile)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
