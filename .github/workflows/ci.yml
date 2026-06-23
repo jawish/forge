@@ -24,7 +24,7 @@ jobs:
     name: tsc --noEmit (per package)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -44,7 +44,7 @@ jobs:
     name: Oxlint + Oxfmt
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -62,7 +62,7 @@ jobs:
     name: Unit tests (~15% — pure logic in domain/)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -82,7 +82,7 @@ jobs:
     name: Seam tests (~80% — real DO/router/harness via miniflare)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -107,7 +107,7 @@ jobs:
     # cancel) are implemented in apps/web/e2e/ and green.
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v2
         with:
           experimental: true
