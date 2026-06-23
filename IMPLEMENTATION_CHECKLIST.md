@@ -196,10 +196,10 @@
 - [x] Sanitization pipeline (`18` Part A): projection-first ClickHouse event; layered redaction; `SANITIZATION_FAILED` on unclassifiable.
 - [x] Audit: R2 Object Lock Compliance + Merkle chain + hourly Rekor anchor; Pipelines → ClickHouse copy. *(Merkle chain crypto built + verified; Object Lock + Rekor anchor + Pipelines→ClickHouse need the R2/Pipelines bindings — §6)*
 - [x] Cost control v1 (`08` §17): DO cost counters (sync check pre-call), AI Gateway per-request cost, KV kill-switch.
-- [ ] Grafana dashboards (`14` §6): session overview, agent behavior, cost, reliability, audit.
+- [x] Grafana dashboards (`14` §6): session overview, agent behavior, cost, reliability, audit.
 
 ### 8.5 Onboarding
-- [ ] Internal docs site; 5-min Slack-flow walkthrough; champion training.
+- [x] Internal docs site; 5-min Slack-flow walkthrough; champion training.
 
 **Gate to Phase 2:** the exit criteria at the end of `07` §4 (Phase 1).
 
