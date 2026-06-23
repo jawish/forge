@@ -1,0 +1,16 @@
+{
+  "name": "@forge/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge web Worker — TanStack Start (UI + tRPC client), no DO bindings (docs/09 §3). Built in §5.24+.",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'web dev wired in §5.24 (TanStack Start on CF Workers)' && exit 0",
+    "build": "echo 'web build wired in §5.24' && exit 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "deploy": "echo 'web deploy wired in §1.4 (mise deploy)' && exit 0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.1-rc"
+  }
+}

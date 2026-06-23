@@ -1,0 +1,22 @@
+{
+  "name": "@forge/control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge control-plane Worker — tRPC API + WS gateway + Slack bot + Session DO + Queue/Workflow consumers (docs/09 §3). Built in §4–§5.",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'control-plane dev wired in §4.2 (wrangler dev --env fast --local)' && exit 0",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest watch",
+    "deploy": "echo 'control-plane deploy wired in §1.4 (mise deploy)' && exit 0"
+  },
+  "dependencies": {
+    "@forge/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "7.0.1-rc"
+  }
+}

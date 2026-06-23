@@ -1,0 +1,33 @@
+{
+  "name": "@forge/domain",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge domain spine — types, zod schemas, OTel conventions, config, errors, state machine. One package, four concerns (docs/09 §2).",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./otel": "./src/otel/index.ts",
+    "./config": "./src/config/index.ts",
+    "./errors": "./src/errors/index.ts",
+    "./state": "./src/state/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "smol-toml": "1.7.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "7.0.1-rc",
+    "vitest": "4.1.9"
+  }
+}
