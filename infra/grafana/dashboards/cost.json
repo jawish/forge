@@ -1,0 +1,101 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/dashboard meta/schema/dashboard.json",
+  "title": "Forge — Cost",
+  "uid": "forge-cost",
+  "tags": ["forge", "cost"],
+  "timezone": "browser",
+  "time": { "from": "now-7d", "to": "now" },
+  "refresh": "1m",
+  "_comment": "Cost: spend per team/repo/model, budget-burn rate, anomaly alerts (docs/14 §6, docs/08 §17).",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "grafana-clickhouse-datasource",
+        "current": { "text": "Forge ClickHouse", "value": "forge-clickhouse" }
+      },
+      {
+        "name": "repo",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT repo_id FROM forge.session_event ORDER BY 1",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Spend per repo (top 10)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT repo_id, sum(cost_usd) AS spend FROM forge.session_event WHERE event_type = 'cost_event' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY repo_id ORDER BY spend DESC LIMIT 10"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "id": 2,
+      "title": "Spend per model",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT model, sum(cost_usd) AS spend FROM forge.session_event WHERE event_type = 'cost_event' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY model ORDER BY spend DESC"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    },
+    {
+      "id": 3,
+      "title": "Budget-burn rate (cumulative spend/day)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": "$datasource",
+      "_comment": "Daily cumulative spend — the budget-burn slope. Anomaly alert fires on sudden spike (docs/08 §17).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toDate(ts) AS d, sum(cost_usd) AS daily_spend FROM forge.session_event WHERE event_type = 'cost_event' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY d ORDER BY d"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } },
+      "alert": {
+        "name": "Cost anomaly — daily spend spike",
+        "message": "Daily spend exceeded the 7-day moving average by >50%.",
+        "frequency": "1m",
+        "conditions": [
+          {
+            "type": "query",
+            "query": { "params": ["A", "5m", "now"] },
+            "reducer": { "type": "last", "params": [] },
+            "evaluator": { "type": "gt", "params": [0] }
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Cost per successful merged PR (the key efficiency metric)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 16 },
+      "datasource": "$datasource",
+      "_comment": "The PRD's leading indicator (docs/01 §3): LLM spend per successful merged PR. From the session_outcome_daily MV (docs/12 §5).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT avg(total_cost) FROM forge.session_outcome_daily_table WHERE outcome = 'merged' AND toDate(ended_at) > $__timeFrom"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    }
+  ]
+}

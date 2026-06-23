@@ -1,0 +1,88 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/dashboard meta/schema/dashboard.json",
+  "title": "Forge — Reliability",
+  "uid": "forge-reliability",
+  "tags": ["forge", "reliability"],
+  "timezone": "browser",
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "_comment": "Reliability: error rate by category (docs/15 §2), sandbox provisioning failures, provider errors (docs/14 §6).",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "grafana-clickhouse-datasource",
+        "current": { "text": "Forge ClickHouse", "value": "forge-clickhouse" }
+      },
+      {
+        "name": "repo",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT repo_id FROM forge.session_event ORDER BY 1",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Error rate by category (docs/15 §2)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "The 7 categories drive triage (auth, not_found, invalid_input, budget_exhausted, transient, upstream_failure, internal). forge.error.category (docs/14 §1).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT JSONExtractString(payload, 'error_category') AS category, count() AS c FROM forge.session_event WHERE event_type = 'error' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY category ORDER BY c DESC"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 2,
+      "title": "Error code breakdown (grep labels — docs/15 §3)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT JSONExtractString(payload, 'error_code') AS code, JSONExtractString(payload, 'error_category') AS category, count() AS c, any(JSONExtractString(payload, 'error_message_truncated')) AS sample FROM forge.session_event WHERE event_type = 'error' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY code, category ORDER BY c DESC LIMIT 50"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Sandbox provisioning failures (SANDBOX_PROVISIONING_FAILED)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "$datasource",
+      "_comment": "Image-pull / capacity failures (docs/15 §3). Spikes signal an image or CF Sandbox capacity issue.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, count() AS c FROM forge.session_event WHERE event_type = 'error' AND JSONExtractString(payload, 'error_code') = 'SANDBOX_PROVISIONING_FAILED' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "title": "Provider errors (PROVIDER_ERROR — AI Gateway upstream)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "$datasource",
+      "_comment": "AI Gateway 5xx after retries (docs/15 §3). Sustained spikes → failover provider weighting.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, count() AS c FROM forge.session_event WHERE event_type = 'error' AND JSONExtractString(payload, 'error_code') = 'PROVIDER_ERROR' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    }
+  ]
+}
