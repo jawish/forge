@@ -3,7 +3,7 @@
 [build]
 dockerfile = ".forge/Dockerfile"
 setup_script = ".forge/setup.sh"
-base_image = "chainguard/node:22"
+base_image = "chainguard/node:latest-dev"
 
 [prewarm]
 commands = ["pnpm install --frozen-lockfile", "pnpm build"]

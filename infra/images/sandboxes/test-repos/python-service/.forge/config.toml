@@ -4,7 +4,7 @@
 [build]
 dockerfile = ".forge/Dockerfile"
 setup_script = ".forge/setup.sh"
-base_image = "chainguard/python:latest"
+base_image = "chainguard/python:latest-dev"
 
 [prewarm]
 commands = ["pip install -r requirements.txt --frozen"]
