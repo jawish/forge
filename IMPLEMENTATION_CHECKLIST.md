@@ -129,10 +129,10 @@
 **Spec:** `19` §7 (configure don't fork), `18` Part B (egress/creds), `08` §3.
 
 - [x] **5.18** Provider interface (ADR-0001): `provision(spec)`, `exec(cmd)`, `snapshot()`, `restore(ref)`, `destroy()`. `LocalSandboxProvider` (§4.3) is the `fast` impl.
-- [x] **5.19** On `spawn`: provision via provider → inject session-scoped git identity (`user.name`/`user.email`) → apply egress allowlist + credential manifest from `.forge/config.toml` `[egress]`/`[credentials]` (Outbound Workers boundary, `18` §5). In `fast`, the "boundary" is an in-process allowlist check on `LocalSandboxProvider` exec.
-- [x] **5.20** At spawn, write an OpenCode MCP-consumer config (temp file in the sandbox) listing the platform MCP endpoint + registry allowlist (empty for now). **No OpenCode fork, no plugin code** (`19` §7).
-- [x] **5.21** Boot the agent harness pointed at that config. In `fast`, the "harness" is `MockModelProvider` driving the loop; in `real` (§6) it's real OpenCode.
-- [x] **5.22** Agent loop drives transitions: model streams thinking → harness calls tools → `forge.reportStatus`/`completePR` arrive → DO transitions accordingly.
+- [x] **5.19** On `spawn`: provision via provider → inject session-scoped git identity (`user.name`/`user.email`) → apply egress allowlist + credential manifest from `.forge/config.toml` `[egress]`/`[credentials]` (Outbound Workers boundary, `18` §5). In `fast`, the "boundary" is an in-process allowlist check on `LocalSandboxProvider` exec. *(Wired: runAgentTurn provisions the sandbox via the provider on queued→active; git identity injected by LocalSandboxProvider.provision; egress allowlist checked in exec.)*
+- [x] **5.20** At spawn, write an OpenCode MCP-consumer config (temp file in the sandbox) listing the platform MCP endpoint + registry allowlist (empty for now). **No OpenCode fork, no plugin code** (`19` §7). *(Wired: writeMcpConfig writes .forge-mcp.json to the sandbox workdir after provisioning; buildHarnessConfig builds the config object.)*
+- [x] **5.21** Boot the agent harness pointed at that config. In `fast`, the "harness" is `MockModelProvider` driving the loop; in `real` (§6) it's real OpenCode. *(Wired: prompt.submit fires runAgentTurnSafe which builds services (model+sandbox) and runs the loop; the harness config is written to the sandbox before the model stream.)*
+- [x] **5.22** Agent loop drives transitions: model streams thinking → harness calls tools → `forge.reportStatus`/`completePR` arrive → DO transitions accordingly. *(Wired: runAgentTurn streams model events → transitions queued→active→running→ready_for_pr; prompt.submit triggers it via runAgentTurnSafe.)*
 - [x] **5.23** **Seam test (harness + mock model, `16` §3):** spawn → mock model streams a canned "read file + completePR" sequence → assert DO reaches `ready_for_pr` with an artifact recorded.
 
 ### 5f. Minimal `web` Worker (Track D)
