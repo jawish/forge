@@ -10,8 +10,8 @@ import { App } from "./App";
 
 const queryClient = new QueryClient();
 // In dev, the Vite proxy forwards /api to the control-plane (localhost:8787);
-// in prod, same-origin behind CF Access.
-const CP_ORIGIN = ""; // same-origin / proxied
+// in prod, VITE_API_ORIGIN points to the deployed control-plane worker.
+const CP_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? ""; // same-origin / proxied
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root not found");
