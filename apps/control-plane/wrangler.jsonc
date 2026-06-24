@@ -1,0 +1,116 @@
+{
+  // Forge control-plane Worker (docs/09 §3). API + WS gateway + Slack bot +
+  // Session DOs + Queue/Workflow consumers — one trust domain, shared bindings.
+  //
+  // The TOP-LEVEL config is the local dev/test shape: the fast profile (mock
+  // model + local sandbox, zero creds) with miniflare-emulated bindings. This is
+  // what `wrangler dev` (fast) and the vitest-pool-workers seam tests load.
+  //
+  // Named environments (real/dev/staging/production) override for deployed runs:
+  //   fast       — alias of top-level (kept for `wrangler dev --env fast`)
+  //   real       — local workerd + dev-shared creds (§6)
+  //   dev/staging/production — deployed (§6+)
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "forge-control-plane",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // The Durable Object holding all per-session hot state (docs/12 §2).
+  "durable_objects": {
+    "bindings": [{ "name": "sessionDo", "class_name": "SessionDO" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionDO"] }],
+
+  // Local-emulated bindings (miniflare). These are the fast-profile shape.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "forge-control-plane",
+      "database_id": "local-fake-d1-id",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "r2_buckets": [
+    { "binding": "ARTIFACTS", "bucket_name": "forge-artifacts" },
+    { "binding": "SANDBOXES", "bucket_name": "forge-sandboxes" },
+    { "binding": "AUDIT", "bucket_name": "forge-audit" },
+  ],
+  "kv_namespaces": [{ "binding": "CONFIG_KV", "id": "local-fake-kv-id" }],
+  "queues": {
+    "producers": [{ "binding": "WORK_QUEUE", "queue": "forge-work" }],
+    "consumers": [{ "queue": "forge-work", "max_batch_size": 5 }],
+  },
+
+  // Default profile = fast (zero-cred inner loop, docs/09 §5).
+  "vars": { "FORGE_DEV_PROFILE": "fast" },
+
+  "observability": { "enabled": true },
+
+  "env": {
+    // fast — explicit alias so `wrangler dev --env fast` works identically.
+    "fast": {
+      "name": "forge-control-plane-fast",
+      "vars": { "FORGE_DEV_PROFILE": "fast" },
+    },
+    // real — local workerd against dev-shared Secrets Store creds (§6).
+    "real": {
+      "name": "forge-control-plane-real",
+      "vars": { "FORGE_DEV_PROFILE": "real" },
+      // AI Gateway, Sandbox creds, etc. arrive via .dev.vars (gitignored) in §6.
+    },
+    "dev": {
+      "name": "forge-control-plane-dev",
+      "vars": { "FORGE_DEV_PROFILE": "real", "FORGE_DEV_BYPASS_AUTH": "true" },
+      // The SessionDO durable object (required for all sessions).
+      // NOTE: the SANDBOX_DO binding + containers config is commented out until
+      // the account is on the Workers Paid plan (CF Containers requires it).
+      // The agent loop falls back to the model stream path without a sandbox.
+      "durable_objects": {
+        "bindings": [
+          { "name": "sessionDo", "class_name": "SessionDO" },
+          { "name": "SANDBOX_DO", "class_name": "Sandbox" },
+        ],
+      },
+      "containers": [{ "class_name": "Sandbox", "image": "./sandbox.Dockerfile" }],
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_classes": ["SessionDO"],
+        },
+        {
+          "tag": "v2-sandbox",
+          "new_sqlite_classes": ["Sandbox"],
+        },
+      ],
+      // Real CF resources (provisioned via wrangler, §6.6).
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "forge-dev-control-plane",
+          "database_id": "0df9e151-cffe-4d0d-be25-75c0cdddd20e",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        { "binding": "ARTIFACTS", "bucket_name": "forge-dev-artifacts" },
+        { "binding": "SANDBOXES", "bucket_name": "forge-dev-sandboxes" },
+        { "binding": "AUDIT", "bucket_name": "forge-dev-audit" },
+      ],
+      "kv_namespaces": [{ "binding": "CONFIG_KV", "id": "d4af045664ee45f6842d3e613c087e1b" }],
+      "queues": {
+        "producers": [{ "binding": "WORK_QUEUE", "queue": "forge-dev-work" }],
+        "consumers": [{ "queue": "forge-dev-work", "max_batch_size": 5 }],
+      },
+      "browser": { "binding": "BROWSER" },
+    },
+    "staging": {
+      "name": "forge-control-plane-staging",
+      "vars": { "FORGE_DEV_PROFILE": "real" },
+    },
+    "production": {
+      "name": "forge-control-plane",
+      "vars": { "FORGE_DEV_PROFILE": "real" },
+    },
+  },
+}

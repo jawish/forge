@@ -1,0 +1,88 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/dashboard meta/schema/dashboard.json",
+  "title": "Forge — Agent Behavior",
+  "uid": "forge-agent-behavior",
+  "tags": ["forge", "agent"],
+  "timezone": "browser",
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "_comment": "Agent behavior: tool-call distribution, stuck-rate, model usage by tier (docs/14 §6). Built on forge.session_event.",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "grafana-clickhouse-datasource",
+        "current": { "text": "Forge ClickHouse", "value": "forge-clickhouse" }
+      },
+      {
+        "name": "repo",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT repo_id FROM forge.session_event ORDER BY 1",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Tool-call distribution (top 20)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "forge.mcp.server distinguishes platform vs registry MCP (docs/14 §3). tool_name from the tool_call event payload.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT JSONExtractString(payload, 'tool_name') AS tool, count() AS c FROM forge.session_event WHERE event_type = 'tool_call' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY tool ORDER BY c DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Stuck-rate (sessions that hit activity=stuck)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "Stuck-rate from the activity transitions (docs/11 §3). Stuck → failed is the failure path.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, countIf(activity = 'stuck') AS stuck, count() AS total FROM forge.session_event WHERE event_type = 'status_transition' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 3,
+      "title": "Model usage by tier (tokens)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "$datasource",
+      "_comment": "forge.model.id distinguishes the model; tier mapping is the AI Gateway config (docs/08 §6).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT model, sum(tokens_in + tokens_out) AS tokens FROM forge.session_event WHERE event_type = 'cost_event' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY model ORDER BY tokens DESC"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Tool retry rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "$datasource",
+      "_comment": "High retry rate flags flaky tools (docs/14 §6 agent behavior).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, avg(JSONExtractFloat(payload, 'retry_count')) AS avg_retries FROM forge.session_event WHERE event_type = 'tool_call' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    }
+  ]
+}

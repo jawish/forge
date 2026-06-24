@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "promise", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": false
+  },
+  "settings": {},
+  "rules": {
+    // TS + import hygiene
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unused-vars": "warn",
+    "import/no-default-export": "off",
+    // Promise correctness (category-driven, plus explicit)
+    "promise/no-callback-in-promise": "error",
+    "promise/no-promise-in-callback": "off"
+  },
+  "overrides": [
+    {
+      // Config files / entry points may use default exports (Workers, Vite, etc.)
+      "files": ["*.config.*", "**/wrangler.jsonc", "**/*.d.ts"],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["node_modules", "dist", ".wrangler", "coverage", "**/*.md"]
+}

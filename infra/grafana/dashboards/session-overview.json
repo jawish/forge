@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/dashboard meta/schema/dashboard.json",
+  "title": "Forge — Session Overview",
+  "uid": "forge-session-overview",
+  "tags": ["forge", "session"],
+  "timezone": "browser",
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "30s",
+  "_comment": "Built on the ClickHouse datasource (forge.session_event, docs/12 §5). Filterable by forge.repo.id / forge.user.id / forge.session.status / environment (docs/14 §6). Datasource uid 'forge-clickhouse' is the ClickStack datasource provisioned in §6/prod.",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "grafana-clickhouse-datasource",
+        "current": { "text": "Forge ClickHouse", "value": "forge-clickhouse" }
+      },
+      {
+        "name": "repo",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT repo_id FROM forge.session_event ORDER BY 1",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "environment",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT JSONExtractString(payload, 'environment') FROM forge.session_event",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active / queued / failed sessions (now)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT status, count(DISTINCT session_id) AS c FROM forge.session_event WHERE status IN ('queued','active','failed') AND ts > now() - INTERVAL 1 HOUR AND repo_id IN ($repo) GROUP BY status ORDER BY status"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 2,
+      "title": "Sessions per status (time series)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, status, count(DISTINCT session_id) AS c FROM forge.session_event WHERE ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t, status ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line" }, "unit": "short" } }
+    },
+    {
+      "id": 3,
+      "title": "p50 / p99 time-to-interactive (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": "$datasource",
+      "_comment": "TTI = time from session_started to first prompt.stream span. Derived from the DO-buffered spans (promoted-to-full on failure, docs/14 §4).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, quantileTDigest(0.5)(duration_ms) AS p50, quantileTDigest(0.99)(duration_ms) AS p99 FROM forge.session_event WHERE event_type = 'session_started' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 4,
+      "title": "Cost per session (avg + p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toStartOfHour(ts) AS t, avg(cost_usd) AS avg_cost, quantileTDigest(0.99)(cost_usd) AS p99_cost FROM forge.session_event WHERE event_type = 'cost_event' AND ts > $__timeFrom AND repo_id IN ($repo) GROUP BY t ORDER BY t"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    }
+  ]
+}

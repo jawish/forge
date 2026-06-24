@@ -1,0 +1,8 @@
+# Keep the image lean — don't copy build tooling or caches into the sandbox image.
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.git/
+.forge/Dockerfile
+.forge/config.toml

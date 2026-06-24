@@ -1,0 +1,15 @@
+{
+  "name": "request-human-input",
+  "description": "Canned sequence: model thinks briefly, then asks a clarifying question (sets activity=awaiting_input via forge.requestHumanInput — docs/10 §6).",
+  "events": [
+    {
+      "type": "thinking_delta",
+      "text": "The task is ambiguous — I need to confirm the intended behavior."
+    },
+    {
+      "type": "request_human_input",
+      "question": "Should this fix target the main branch or the release/2.x branch?"
+    },
+    { "type": "finish", "reason": "tool_use" }
+  ]
+}

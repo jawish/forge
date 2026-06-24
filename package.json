@@ -1,0 +1,28 @@
+{
+  "name": "forge",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge — internal agentic software-factory platform. Monorepo root.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm -r test:unit",
+    "test:e2e": "pnpm -r test:e2e",
+    "test:watch": "pnpm -r test:watch",
+    "lint": "oxlint . && oxfmt --check .",
+    "fmt": "oxfmt .",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "oxfmt": "0.56.0",
+    "oxlint": "1.71.0",
+    "prettier": "3.6.2",
+    "typescript": "7.0.1-rc",
+    "wrangler": "^4.103.0"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "packageManager": "pnpm@10.12.1"
+}

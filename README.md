@@ -94,6 +94,21 @@ Cloud: Cloudflare (sole cloud) — Workers + Durable Objects, Sandbox, AI Gatewa
 
 ---
 
+## Using Forge (onboarding)
+
+Internal docs for engineers, PMs/designers, and repo champions live in
+[`internal-docs/`](./internal-docs/). Start with the
+[5-minute getting-started](./internal-docs/getting-started.md) and the
+[Slack flow walkthrough](./internal-docs/slack-flow-walkthrough.md). Repo owners:
+see the [champion guide](./internal-docs/champion-guide.md).
+
+## Observability dashboards
+
+The 5 standard Grafana dashboards (session overview, agent behavior, cost,
+reliability, audit — docs/14 §6) live in [`infra/grafana/dashboards/`](./infra/grafana/dashboards/),
+built on the ClickHouse analytics lake (docs/12 §5). See
+[`infra/grafana/README.md`](./infra/grafana/README.md) for provisioning.
+
 ## Contributing
 
 1. Read `docs/00_INDEX.md` + `CONTEXT.md`, then the spec(s) relevant to your change.
@@ -102,4 +117,4 @@ Cloud: Cloudflare (sole cloud) — Workers + Durable Objects, Sandbox, AI Gatewa
 4. CI gate + 1 reviewer required for `main`. Prod needs a tagged release + 2-person approval.
 5. If you made a surprising decision, write an ADR in `docs/adr/`.
 
-Design questions → the relevant `docs/NN_*.md`. Build-order questions → `docs/07_Implementation_Roadmap.md`. Step questions → `IMPLEMENTATION_CHECKLIST.md`.
+Design questions → the relevant `docs/NN_*.md`. Build-order questions → `docs/07_Implementation_Roadmap.md`. Step questions → `IMPLEMENTATION_CHECKLIST.md`. Usage questions → [`internal-docs/`](./internal-docs/).

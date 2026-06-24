@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Cloudflare / Wrangler local state
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# mise local overrides (per-developer; never committed)
+.mise.local.toml
+.mise.toml.local
+
+# Environment files (never commit secrets — 18 §5)
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Pulumi state & secrets (infra/pulumi — never committed)
+*.pulumiBackup
+Pulumi.*.yaml.bak
+
+# Logs
+*.log
+npm-debug.log*

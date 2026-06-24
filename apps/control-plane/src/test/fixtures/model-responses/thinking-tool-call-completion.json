@@ -1,0 +1,18 @@
+{
+  "name": "thinking-tool-call-completion",
+  "description": "Canned sequence: a turn of thinking + one tool call + a normal stop completion (no PR). Used for live-stream UX work (thinking/tool-call event rendering — ADR-0004).",
+  "events": [
+    { "type": "thinking_delta", "text": "Analyzing the request." },
+    { "type": "thinking_delta", "text": " I'll grep for the relevant symbol." },
+    {
+      "type": "tool_call",
+      "toolName": "rg",
+      "args": { "pattern": "export function", "path": "." }
+    },
+    {
+      "type": "thinking_delta",
+      "text": "Here's what I found. The code is consistent; no change needed."
+    },
+    { "type": "finish", "reason": "stop" }
+  ]
+}

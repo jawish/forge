@@ -1,0 +1,40 @@
+{
+  "name": "@forge/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge web Worker — TanStack Start (UI + tRPC client), no DO bindings (docs/09 §3).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "echo 'web unit tests (Vitest) added with the React components' && exit 0",
+    "test:unit": "echo 'web unit tests added with the React components' && exit 0",
+    "test:e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@forge/control-plane": "workspace:*",
+    "@forge/domain": "workspace:*",
+    "@tanstack/react-query": "5.101.1",
+    "@tanstack/react-router": "1.170.16",
+    "@tanstack/react-start": "1.168.26",
+    "@trpc/client": "11.18.0",
+    "@trpc/react-query": "11.18.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260623.1",
+    "@playwright/test": "1.61.1",
+    "@tanstack/start-vite-plugin": "1.91.1",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "5.1.0",
+    "typescript": "7.0.1-rc",
+    "vite": "8.1.0",
+    "wrangler": "4.103.0"
+  }
+}

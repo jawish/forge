@@ -1,0 +1,4 @@
+name: forge-infra
+description: Forge platform Cloudflare infrastructure (docs/17 §2, checklist §6.6)
+runtime: nodejs
+main: src/index.ts

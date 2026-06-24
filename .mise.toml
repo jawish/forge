@@ -1,0 +1,46 @@
+# Forge — tool versions + task definitions
+# Canonical task list from docs/09_Project_Structure.md §4 (verbatim).
+# Tools needed for the current build slice (§1–§5, fast profile) are pinned here.
+# pulumi is added to the [tools] table per 09 §4; it installs when first needed (infra work is §6+).
+# If `mise install` fails on pulumi on a fresh box, run `mise install node pnpm` and add pulumi later.
+
+[tools]
+node = "22"
+pnpm = "10"
+# pulumi = "3"  # unmuted once the mise pulumi backend publishes v3; install manually for §6+ infra work
+
+[tasks.dev]
+description = "Start local dev (fast profile: mocks, zero creds)"
+run = "FORGE_DEV_PROFILE=fast pnpm -r --parallel dev"
+
+[tasks."dev:real"]
+description = "Start local dev (real profile: real model + CF Sandbox via dev creds)"
+run = "FORGE_DEV_PROFILE=real pnpm -r --parallel dev"
+
+[tasks.build]
+description = "Build all packages + apps"
+run = "pnpm -r build"
+
+[tasks.test]
+description = "Run all tests"
+run = "pnpm -r test"
+
+[tasks."test:unit"]
+description = "Run unit tests only (fastest)"
+run = "pnpm -r test:unit"
+
+[tasks."test:e2e"]
+description = "Run E2E tests (Playwright; requires a dev profile running)"
+run = "pnpm -r test:e2e"
+
+[tasks."test:watch"]
+description = "Run tests in watch mode (Vitest)"
+run = "pnpm -r test:watch"
+
+[tasks.lint]
+description = "Lint + format check (Oxlint + Oxfmt)"
+run = "pnpm lint"
+
+[tasks.deploy]
+description = "Deploy control-plane + web to CF (requires env creds)"
+run = "pnpm --filter control-plane deploy && pnpm --filter web deploy"
