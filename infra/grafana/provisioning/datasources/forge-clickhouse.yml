@@ -1,0 +1,17 @@
+# Grafana datasource — the Forge ClickHouse (docs/14 §6). Provisioned so the 5
+# dashboards (infra/grafana/dashboards/) resolve their $datasource variable.
+# Local: the docker-compose `clickhouse` service. Prod: ClickStack (§6/prod).
+apiVersion: 1
+datasources:
+  - name: Forge ClickHouse
+    uid: forge-clickhouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      secure: false
+      username: default
+      defaultDatabase: forge

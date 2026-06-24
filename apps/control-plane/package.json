@@ -1,0 +1,43 @@
+{
+  "name": "@forge/control-plane",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge control-plane Worker — tRPC API + WS gateway + Slack bot + Session DO + Queue/Workflow consumers (docs/09 §3).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./router": "./src/api/router.ts"
+  },
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "dev:real": "wrangler dev --env real --local",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests && vitest run --passWithNoTests --config vitest.node.config.ts",
+    "test:unit": "vitest run --passWithNoTests --config vitest.node.config.ts",
+    "test:seam": "vitest run --passWithNoTests",
+    "test:watch": "vitest watch",
+    "test:e2e": "echo 'control-plane e2e (Playwright) wired at §5.28' && exit 0",
+    "deploy": "wrangler deploy --env production",
+    "deploy:staging": "wrangler deploy --env staging"
+  },
+  "dependencies": {
+    "@cloudflare/agents": "0.0.16",
+    "@cloudflare/containers": "^0.3.7",
+    "@cloudflare/puppeteer": "^1.1.0",
+    "@cloudflare/sandbox": "^0.12.1",
+    "@forge/domain": "workspace:*",
+    "@slack/web-api": "7.17.0",
+    "@trpc/server": "11.18.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.16.18",
+    "@cloudflare/workers-types": "4.20260623.1",
+    "@types/node": "22.10.0",
+    "miniflare": "4.20260617.1",
+    "typescript": "7.0.1-rc",
+    "vitest": "4.1.9",
+    "wrangler": "4.103.0"
+  }
+}

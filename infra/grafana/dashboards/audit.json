@@ -1,0 +1,106 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/dashboard meta/schema/dashboard.json",
+  "title": "Forge — Audit",
+  "uid": "forge-audit",
+  "tags": ["forge", "audit"],
+  "timezone": "browser",
+  "time": { "from": "now-7d", "to": "now" },
+  "refresh": "1m",
+  "_comment": "Audit: session outcome rollup, PR-merge rate, no-change rate (docs/14 §6). Queryable copy of the R2 WORM audit (docs/12 §4) via Pipelines → ClickHouse.",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "grafana-clickhouse-datasource",
+        "current": { "text": "Forge ClickHouse", "value": "forge-clickhouse" }
+      },
+      {
+        "name": "repo",
+        "type": "query",
+        "datasource": "$datasource",
+        "query": "SELECT DISTINCT repo_id FROM forge.session_event ORDER BY 1",
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Session outcome rollup",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "The 5 terminal outcomes (merged/closed/no_change/failed/cancelled — docs/11 §2). From session_outcome_daily MV (docs/12 §5).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT outcome, sum(session_count) AS c FROM forge.session_outcome_daily_table WHERE toDate(ended_at) > $__timeFrom AND repo_id IN ($repo) GROUP BY outcome ORDER BY c DESC"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 2,
+      "title": "PR-merge rate (session → merged PR conversion)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 12, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "The PRD's leading indicator: session→PR conversion (>35% target, docs/01 §3).",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT sumIf(session_count, outcome = 'merged') / sum(session_count) AS merge_rate FROM forge.session_outcome_daily_table WHERE toDate(ended_at) > $__timeFrom AND repo_id IN ($repo)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 3,
+      "title": "No-change rate (agent ran, decided nothing needed changing)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 0 },
+      "datasource": "$datasource",
+      "_comment": "Valid outcome (docs/11 §2) but a high rate signals the classifier or prompt quality issue.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT sumIf(session_count, outcome = 'no_change') / sum(session_count) AS no_change_rate FROM forge.session_outcome_daily_table WHERE toDate(ended_at) > $__timeFrom AND repo_id IN ($repo)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 4,
+      "title": "Outcomes per repo per day (stacked)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": "$datasource",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT toDate(ended_at) AS d, repo_id, outcome, sum(session_count) AS c FROM forge.session_outcome_daily_table WHERE toDate(ended_at) > $__timeFrom AND repo_id IN ($repo) GROUP BY d, repo_id, outcome ORDER BY d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "stacking": { "mode": "normal" } }, "unit": "short" }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Cost per merged PR by repo (efficiency ranking)",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": "$datasource",
+      "_comment": "The data-flywheel's key query (docs/01 §3): avg LLM spend per successful merged PR by repo.",
+      "targets": [
+        {
+          "refId": "A",
+          "query": "SELECT repo_id, avg(total_cost) AS cost_per_merged FROM forge.session_outcome_daily_table WHERE outcome = 'merged' AND toDate(ended_at) > $__timeFrom AND repo_id IN ($repo) GROUP BY repo_id ORDER BY cost_per_merged DESC"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" } }
+    }
+  ]
+}

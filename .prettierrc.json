@@ -1,0 +1,12 @@
+{
+  "$comment": "Prettier fallback config (ADR-0006). Oxfmt is the primary formatter; this exists so the documented TS6/Prettier fallback path stays in sync. Not active unless Oxfmt blocks.",
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "endOfLine": "lf"
+}

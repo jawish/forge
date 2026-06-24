@@ -1,0 +1,6 @@
+# Keep the image lean — don't copy build tooling or caches into the sandbox image.
+node_modules/
+dist/
+.git/
+.forge/Dockerfile
+.forge/config.toml

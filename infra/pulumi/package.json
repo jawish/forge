@@ -1,0 +1,20 @@
+{
+  "name": "@forge/infra-pulumi",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Forge IaC — Pulumi TS program (CF + ClickHouse Cloud + Grafana Cloud, 3 stacks per docs/17 §2).",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "echo 'infra tests: pulumi preview validate in CI' && exit 0"
+  },
+  "dependencies": {
+    "@pulumi/cloudflare": "6.17.0",
+    "@pulumi/pulumi": "3.247.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.0",
+    "typescript": "7.0.1-rc"
+  }
+}

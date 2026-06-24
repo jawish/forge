@@ -1,0 +1,15 @@
+# Grafana provisioning — Forge dashboards (docs/14 §6).
+# Drop into Grafana's provisioning/dashboards path (or apply via the Grafana
+# provider in Pulumi at §6.6 widening). The datasource 'forge-clickhouse' is the
+# ClickStack ClickHouse datasource (provisioned §6/prod).
+apiVersion: 1
+providers:
+  - name: Forge
+    orgId: 1
+    folder: Forge
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/forge

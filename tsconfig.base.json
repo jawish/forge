@@ -1,0 +1,30 @@
+{
+  // Forge shared TypeScript config (TS 7 RC primary, TS 6 fallback per ADR-0006).
+  // Strict throughout; bundler resolution (modules resolved by Vite/wrangler/esbuild).
+  // Avoid TS-7-only syntax that would block the documented TS 6 fallback.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "useDefineForClassFields": true
+    // NOTE: TS 7 removed `baseUrl` (ADR-0006). Path mapping uses explicit relative
+    // globs under `paths` instead. Consuming packages re-declare their own `paths`.
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // Oxfmt is the active formatter (ADR-0006). Prettier (.prettierrc.json) is the
+  // documented fallback if Oxfmt blocks; kept in sync, not run unless needed.
+  // Docs are locked source-of-truth specs (prose-heavy markdown) — not auto-formatted.
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    ".wrangler",
+    "coverage",
+    "docs/**",
+    "**/*.md",
+    "**/*.html",
+    "forge-dashboard.html"
+  ]
+}

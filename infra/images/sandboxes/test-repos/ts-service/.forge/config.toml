@@ -1,0 +1,37 @@
+# .forge/config.toml — TypeScript test repo (docs/16 §2 fixture, validated by repoConfigSchema).
+
+[build]
+dockerfile = ".forge/Dockerfile"
+setup_script = ".forge/setup.sh"
+base_image = "chainguard/node:latest-dev"
+
+[prewarm]
+commands = ["pnpm install --frozen-lockfile", "pnpm build"]
+warm_pool_size = 1
+
+[model]
+default = "claude-sonnet-4-6"
+fallback_tier = "flex"
+
+[mcp]
+allowlist = ["memory"]
+
+[policy]
+review_agent_required = false
+stuck_threshold_turns = 10
+stuck_timeout_minutes = 5
+budget_limit_usd = 5.00
+
+[paths]
+sensitive = ["secrets/**", ".env*", "*.pem", "*.key"]
+readonly = ["docs/policies/**"]
+
+[git]
+identity_strategy = "user"
+default_branch = "main"
+
+[egress]
+allow = ["registry.npmjs.org:443", "api.github.com:443"]
+
+[credentials]
+"api.github.com" = "github_oauth:${user_id}"

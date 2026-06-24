@@ -1,0 +1,14 @@
+# .forge/config.toml — malformed golden fixture.
+# `prewarm.warm_pool_size` must be a non-negative int; here it's a string.
+# `policy.stuck_threshold_turns` must be positive; here it's 0.
+# `build.dockerfile` is required; here it's missing.
+
+[build]
+setup_script = ".forge/setup.sh"
+base_image = "chainguard/node:22"
+
+[prewarm]
+warm_pool_size = "three"
+
+[policy]
+stuck_threshold_turns = 0

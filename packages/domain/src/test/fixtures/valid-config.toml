@@ -1,0 +1,46 @@
+# .forge/config.toml — canonical example from docs/13_Configuration.md §2.
+# Used as the golden valid fixture for repoConfigSchema + parseRepoConfig tests.
+
+[build]
+dockerfile = ".forge/Dockerfile" # path to Dockerfile (relative to repo root)
+setup_script = ".forge/setup.sh" # runs during image build (install deps, init caches)
+base_image = "chainguard/node:22" # Chainguard-derived base (08 §15)
+
+[prewarm]
+commands = [ # run on warm-pool snapshot restore
+  "pnpm install --frozen-lockfile",
+  "pnpm build",
+]
+warm_pool_size = 3 # target warm sandboxes for this repo (0 = no warm pool)
+
+[model]
+default = "claude-sonnet-4-6" # tier-2 default (08 §6); per-session override allowed
+fallback_tier = "flex" # tier to use if default is unavailable
+
+[mcp]
+allowlist = [ # registry-managed MCP servers enabled for this repo
+  "memory",
+  "linear",
+]
+# platform-provided MCPs (forge.reportStatus, Browser Run, Stagehand) are always available
+
+[policy] # state-machine policy overrides (11 §6)
+review_agent_required = false # require Review Agent pass before ready_for_pr -> pr_open
+stuck_threshold_turns = 10 # turns without progress -> activity=stuck
+stuck_timeout_minutes = 5 # stuck -> status=failed
+budget_limit_usd = 5.00 # per-session cost cap (null = inherit team default)
+
+[paths]
+sensitive = [ # agent cannot read/write (sanitization layer 1, 18 §2)
+  "secrets/**",
+  ".env*",
+  "*.pem",
+  "*.key",
+]
+readonly = [ # agent can read but not write
+  "docs/policies/**",
+]
+
+[git]
+identity_strategy = "user" # 'user' (per-user OAuth) | 'bot' (shared Forge bot identity)
+default_branch = "main"

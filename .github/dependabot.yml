@@ -1,0 +1,81 @@
+# Dependabot config — docs/08_Tech_Stack.md §15.
+# pnpm ecosystem (grouped, weekly) + GitHub Actions ecosystem.
+version: 2
+
+updates:
+  # JS/TS deps via pnpm (root lockfile).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Group patch+minor together to keep PR noise low; major updates get own PRs.
+    groups:
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+
+  # Per-package manifests so workspace deps are tracked too.
+  - package-ecosystem: npm
+    directory: /packages/domain
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: /apps/control-plane
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      patch-and-minor:
+        update-types:
+          - patch
+          - minor
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+
+  # GitHub Actions versions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - dependencies
+      - ci
