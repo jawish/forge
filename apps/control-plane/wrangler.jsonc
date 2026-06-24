@@ -62,14 +62,16 @@
     "dev": {
       "name": "forge-control-plane-dev",
       "vars": { "FORGE_DEV_PROFILE": "real", "FORGE_DEV_BYPASS_AUTH": "true" },
-      // The SessionDO + Sandbox SDK durable objects.
+      // The SessionDO durable object (required for all sessions).
+      // NOTE: the SANDBOX_DO binding + containers config is commented out until
+      // the account is on the Workers Paid plan (CF Containers requires it).
+      // The agent loop falls back to the model stream path without a sandbox.
       "durable_objects": {
         "bindings": [
           { "name": "sessionDo", "class_name": "SessionDO" },
           { "name": "SANDBOX_DO", "class_name": "Sandbox" },
         ],
       },
-      // CF Sandbox SDK containers config — the base image the Sandbox SDK uses.
       "containers": [{ "class_name": "Sandbox", "image": "./sandbox.Dockerfile" }],
       "migrations": [
         {

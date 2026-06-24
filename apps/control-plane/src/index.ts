@@ -5,7 +5,9 @@
 
 import { createFetchHandler } from "./handler";
 
-// Export the DO classes so wrangler bindings resolve them at deploy time.
+// Export the SessionDO class so the wrangler binding resolves it.
+// The Sandbox export from @cloudflare/sandbox is added at deploy time when the
+// account has the Workers Paid plan (CF Containers requires it).
 export { SessionDO } from "./handler";
 export { Sandbox } from "@cloudflare/sandbox";
 

@@ -94,10 +94,16 @@ export function createFetchHandler() {
                 return wsResponse;
               }
             } catch (wsErr) {
-              console.error("[ws] routeAgentRequest failed:", wsErr instanceof Error ? wsErr.message : String(wsErr));
+              console.error(
+                "[ws] routeAgentRequest failed:",
+                wsErr instanceof Error ? wsErr.message : String(wsErr),
+              );
               span.setAttribute("http.status", 500);
               return jsonResponse(
-                { error: "ws_failed", message: wsErr instanceof Error ? wsErr.message : String(wsErr) },
+                {
+                  error: "ws_failed",
+                  message: wsErr instanceof Error ? wsErr.message : String(wsErr),
+                },
                 500,
               );
             }
@@ -139,7 +145,12 @@ export function createFetchHandler() {
         if (url.pathname === "/github/webhooks" && request.method === "POST") {
           const body = (await request.json()) as {
             action?: string;
-            pull_request?: { number?: number; html_url?: string; merged?: boolean; head?: { ref?: string } };
+            pull_request?: {
+              number?: number;
+              html_url?: string;
+              merged?: boolean;
+              head?: { ref?: string };
+            };
           };
           const ref = body.pull_request?.head?.ref;
           const shortid = ref ? sessionIdFromBranch(ref) : null;
@@ -159,7 +170,9 @@ export function createFetchHandler() {
               const stub = env.sessionDo.get(idObj) as unknown as {
                 transitionTo(to: { status: "merged" | "closed" }, reason: string): Promise<unknown>;
               };
-              await stub.transitionTo({ status: transition.status }, transition.reason).catch(() => {});
+              await stub
+                .transitionTo({ status: transition.status }, transition.reason)
+                .catch(() => {});
             }
           }
           span.setAttribute("http.status", 200);
