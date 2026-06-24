@@ -178,7 +178,7 @@
 ### 8.1 Slack entry (Track D, seam 4) — `19` Part A
 - [x] Slack Bolt on the control-plane Worker (`/slack/events`); signing-secret verification; thread posting; dedup on `(repo,branch,slack_thread)`.
 - [x] Stage-1 intent filter (tier-5 model) → stage-2 repo router (Workers AI → Vectorize `forge-repo-classifier`) → tiered-confidence policy (auto-spawn/confirm/disambiguate/explain).
-- [ ] Seed Vectorize with pilot-repo descriptions/READMEs/commits. *(Needs Workers AI + Vectorize bindings provisioned — §6/prod; the router port + classifier are built and testable without them.)*
+- [x] Seed Vectorize with pilot-repo descriptions/READMEs/commits. *(Index forge-repo-classifier created (768-dim cosine, @cf/baai/bge-base-en-v1.5). Seeded with python-service + ts-service descriptions via Workers AI embeddings → Vectorize upsert. Query endpoint verified. Eventually-consistent indexing may need a few seconds for matches to appear.)*
 
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
 - [x] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`. *(path-scope + safe-edit + git-identity at spawn built; test-run goes via SandboxProvider.exec — wired)*
