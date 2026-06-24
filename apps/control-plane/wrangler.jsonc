@@ -75,6 +75,9 @@
         {
           "tag": "v1",
           "new_classes": ["SessionDO"],
+        },
+        {
+          "tag": "v2-sandbox",
           "new_sqlite_classes": ["Sandbox"],
         },
       ],

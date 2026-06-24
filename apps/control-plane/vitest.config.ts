@@ -9,8 +9,10 @@ import { cloudflarePool } from "@cloudflare/vitest-pool-workers";
 export default defineConfig({
   test: {
     pool: cloudflarePool({
-      // The Worker entrypoint run in the same isolate as tests.
-      main: "./src/index.ts",
+      // Use a test entry point that stubs out the Sandbox DO class (which pulls
+      // in @cloudflare/sandbox's transitive deps that break the miniflare pool).
+      // At deploy time, wrangler uses src/index.ts (which exports the real Sandbox).
+      main: "./src/test-entry.ts",
       wrangler: { configPath: "./wrangler.jsonc" },
     }),
     include: ["src/**/*.test.ts", "test/**/*.test.ts"],
