@@ -36,13 +36,22 @@ export class AiGatewayModelProvider implements ModelProvider {
   }
 
   async *stream(input: ModelStreamInput): AsyncIterable<ModelEvent> {
-    // POST {endpoint}/v1/chat/completions (OpenAI-compatible; AI Gateway routes
-    // to the configured provider). stream=true → SSE deltas.
-    const res = await fetch(`${this.cfg.endpoint}/v1/chat/completions`, {
+    // Build the gateway URL: {endpoint}/{provider}/v1/chat/completions
+    // The endpoint is the base (https://gateway.ai.cloudflare.com/v1/<acct>/<gateway>).
+    // The provider segment (xai/openai/anthropic/etc.) routes to the right backend.
+    // For OpenAI-compatible providers (xai, openai, etc.), the path is
+    // {endpoint}/{provider}/v1/chat/completions.
+    const providerSegment = this.cfg.provider === "anthropic" ? "anthropic" : this.cfg.provider;
+    const url = `${this.cfg.endpoint}/${providerSegment}/v1/chat/completions`;
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         authorization: `Bearer ${this.cfg.apiKey}`,
         "content-type": "application/json",
+        ...(this.cfg.provider === "anthropic"
+          ? { "anthropic-version": "2023-06-01" }
+          : {}),
       },
       body: JSON.stringify({
         model: input.model,

@@ -18,10 +18,17 @@ export interface Context {
   /** The authenticated user id (forge.user.id). */
   userId: string;
   correlationId: string;
+  /** The Workers ExecutionContext (for waitUntil — keeps the agent turn alive
+   * after the HTTP response returns). Passed from the fetch handler. */
+  executionCtx?: ExecutionContext;
 }
 
 /** Build the tRPC context from a request: extract the user identity. */
-export async function createContext(opts: { req: Request; env: Env }): Promise<Context> {
+export async function createContext(opts: {
+  req: Request;
+  env: Env;
+  executionCtx?: ExecutionContext;
+}): Promise<Context> {
   const profile = resolveProfile(opts.env);
   const correlationId = newCorrelationId();
 
@@ -52,7 +59,7 @@ export async function createContext(opts: { req: Request; env: Env }): Promise<C
     }
   }
 
-  return { env: opts.env, userId, correlationId };
+  return { env: opts.env, userId, correlationId, executionCtx: opts.executionCtx };
 }
 
 /** Decode a CF Access JWT payload (no verification — §8 adds real verification). */

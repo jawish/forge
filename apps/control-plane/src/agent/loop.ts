@@ -85,8 +85,9 @@ export async function runAgentTurn(opts: {
 
   // Provisioning -> running (the harness "starts" — first thinking event).
   let markedRunning = false;
+  const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
 
-  for await (const event of opts.model.stream({ prompt: opts.prompt, model: "mock" })) {
+  for await (const event of opts.model.stream({ prompt: opts.prompt, model: modelName })) {
     if (!markedRunning && (event.type === "thinking_delta" || event.type === "tool_call")) {
       await doStub.reportStatus({ activity: "running", summary: "agent started" }).catch(() => {});
       markedRunning = true;

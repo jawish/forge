@@ -30,7 +30,7 @@ import { sessionIdFromBranch, webhookToTransition } from "./git/pr";
 export { SessionDO };
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const profile = resolveProfile(env);
     configureConsoleExporter({ enabled: true });
 
@@ -181,7 +181,7 @@ export default {
           endpoint: "/api",
           req: request,
           router: appRouter,
-          createContext: (opts) => createContext({ req: opts.req, env }),
+          createContext: (opts) => createContext({ req: opts.req, env, executionCtx: ctx }),
         });
         // Attach CORS headers to the tRPC response so cross-origin web requests work.
         return addCorsHeaders(trpcResponse);

@@ -53,6 +53,7 @@ export interface Env {
   AI_GATEWAY_ENDPOINT?: string;
   AI_GATEWAY_KEY?: string;
   AI_GATEWAY_PROVIDER?: string;
+  AI_GATEWAY_MODEL?: string;
   SANDBOX_ACCOUNT_ID?: string;
   SANDBOX_API_TOKEN?: string;
 }
