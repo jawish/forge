@@ -43,7 +43,13 @@ export async function drainAgentTurns(): Promise<void> {
 function runAgentTurnSafe(env: Env, sessionId: string, prompt: string): void {
   const turn = (async () => {
     const services = await buildServices(resolveProfile(env), env);
-    await runAgentTurn({ sessionId, prompt, model: services.model, env }).catch(() => {
+    await runAgentTurn({
+      sessionId,
+      prompt,
+      model: services.model,
+      sandbox: services.sandbox,
+      env,
+    }).catch(() => {
       // Agent turn failure is non-fatal — the DO stays in its current status.
       // The client observes the failure as a lack of progress / a status change.
     });

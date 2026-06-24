@@ -3,12 +3,35 @@ import { describe, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { runAgentTurn, buildHarnessConfig } from "../src/agent/loop";
 import { MockModelProvider } from "../src/model/mock-provider";
+import type { SandboxProvider, SandboxHandle } from "../src/sandbox/provider";
 
 // Seam 5 — agent harness + mock model (docs/16 §3, checklist §5.23).
 // Spawn a session → run the agent turn with the mock model (read-and-complete
 // fixture) → assert the DO reaches ready_for_pr with the state machine driving.
 
 const BASE = "http://x";
+
+/**
+ * A no-op sandbox stub for the agent-loop tests. The existing tests pre-transition
+ * sessions to active(running), so runAgentTurn's provisioning block (queued →
+ * active) never fires — no real provisioning needed. Using a stub avoids importing
+ * LocalSandboxProvider (node:child_process) into the worker's static graph.
+ */
+const sandbox: SandboxProvider = {
+  async provision(): Promise<SandboxHandle> {
+    return { id: "stub", workdir: "/tmp/stub", imageVersion: "latest" };
+  },
+  async exec(): Promise<{ exitCode: number; stdout: string; stderr: string; durationMs: number }> {
+    return { exitCode: 0, stdout: "", stderr: "", durationMs: 0 };
+  },
+  async snapshot(): Promise<{ id: string; location: string; takenAt: number }> {
+    return { id: "stub-snap", location: "stub", takenAt: Date.now() };
+  },
+  async restore(): Promise<SandboxHandle> {
+    return { id: "stub", workdir: "/tmp/stub", imageVersion: "latest" };
+  },
+  async destroy(): Promise<void> {},
+};
 
 /** Create + walk a session to active(running) so the loop can run. */
 async function spawnedRunningSession(repoId: string): Promise<string> {
@@ -39,6 +62,7 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
       sessionId,
       prompt: "fix the bug",
       model: new MockModelProvider(),
+      sandbox,
       env,
     });
     expect(result.finalStatus).toBe("ready_for_pr");
@@ -50,6 +74,7 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
       sessionId,
       prompt: "which branch should this target?",
       model: new MockModelProvider(),
+      sandbox,
       env,
     });
     const idObj = env.SESSION_DO.idFromName(sessionId);
@@ -66,6 +91,7 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
       sessionId,
       prompt: "explore the repo, no change needed",
       model: new MockModelProvider(),
+      sandbox,
       env,
     });
     // No complete_pr in the explore fixture → stays active (not ready_for_pr).
@@ -84,6 +110,7 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
       sessionId,
       prompt: "fix it",
       model: new MockModelProvider(),
+      sandbox,
       env,
     });
     // After the loop reaches ready_for_pr, the agent would have recorded a diff

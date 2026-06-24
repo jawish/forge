@@ -19,6 +19,9 @@ export type DevProfile = "fast" | "real";
 export interface Env {
   // Profile selection (vars.FORGE_DEV_PROFILE).
   FORGE_DEV_PROFILE: string;
+  // The worker's own origin (for the agent harness MCP endpoint, §5.20).
+  // Set via wrangler vars; defaults to http://localhost:8787 in local dev.
+  WORKER_ORIGIN?: string;
   // Durable Object: per-session hot state (docs/12 §2).
   SESSION_DO: DurableObjectNamespace;
   // D1: control-plane OLTP index (docs/12 §3).

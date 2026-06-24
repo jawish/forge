@@ -385,6 +385,15 @@ export class SessionDO extends Agent<Env, SessionDOState> {
     };
   }
 
+  /** The repo this session targets (for sandbox provisioning, §5.19). */
+  async getRepoId(): Promise<{ repoId: string }> {
+    this.ensureMigrated();
+    const rows = this.sql`SELECT repo_id FROM session_meta WHERE id = ${this.ctx.id.toString()}`;
+    const row = rows[0] as { repo_id: string } | undefined;
+    if (!row) throw this.error("not_found", "SESSION_NOT_SPAWNED", "session not spawned");
+    return { repoId: row.repo_id };
+  }
+
   async getHistory(
     opts: { sinceTs?: number; limit?: number } = {},
   ): Promise<{ prompts: unknown[]; toolCalls: unknown[]; artifacts: unknown[] }> {

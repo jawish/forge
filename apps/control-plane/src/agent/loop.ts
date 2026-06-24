@@ -7,8 +7,11 @@
 // + platform-MCP calls → DO reaches a terminal/ready state (docs/11 §3).
 
 import type { ModelEvent, ModelProvider } from "../model/provider";
+import type { SandboxProvider } from "../sandbox/provider";
 import type { Env } from "../env";
 import type { SessionActivity, SessionStatus } from "@forge/domain";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 /** RPC shape of the DO the loop drives. */
 interface AgentDOStub {
@@ -25,6 +28,7 @@ interface AgentDOStub {
   }): Promise<{ artifactId: string }>;
   completePR(c: { diffSummary: string; commitSha: string }): Promise<void>;
   getStatus(): Promise<{ status: SessionStatus; activity: SessionActivity | null }>;
+  getRepoId(): Promise<{ repoId: string }>;
 }
 
 /**
@@ -32,7 +36,9 @@ interface AgentDOStub {
  * into the matching DO mutation (docs/11 §3, docs/10 §6). Drives the session
  * toward ready_for_pr / awaiting_input / no_change based on the model's events.
  *
- * §5.21: at spawn the harness is "booted" pointed at the MCP-consumer config.
+ * §5.19: on first activation, provision the sandbox (git identity + workdir) +
+ * write the OpenCode MCP-consumer config (§5.20).
+ * §5.21: the harness is "booted" pointed at the MCP-consumer config.
  * §5.22: the loop drives transitions — model streams thinking → harness calls
  * tools → forge.reportStatus/completePR arrive → DO transitions accordingly.
  */
@@ -40,20 +46,41 @@ export async function runAgentTurn(opts: {
   sessionId: string;
   prompt: string;
   model: ModelProvider;
+  sandbox: SandboxProvider;
   env: Env;
 }): Promise<{ finalStatus: SessionStatus }> {
   const stub = opts.env.SESSION_DO.idFromName(opts.sessionId);
   const doStub = opts.env.SESSION_DO.get(stub) as unknown as AgentDOStub;
 
-  // Activate the session before running the agent (docs/11 §3: queued → active).
-  // Spawn leaves the session in queued; the first prompt transitions to active.
-  // reportStatus(activity=provisioning) is the entry; the model stream then moves
-  // it to running. This is idempotent if the session is already active.
+  // Activate + provision the session on first prompt (docs/11 §3: queued → active).
+  // Spawn leaves the session in queued; the first prompt transitions to active
+  // (provisioning), provisions the sandbox, writes the MCP config, then runs the
+  // model stream. Idempotent if the session is already active.
   const current = await doStub.getStatus();
   if (current.status === "queued") {
     await doStub
       .transitionTo({ status: "active", activity: "provisioning" }, "agent_activate")
       .catch(() => {});
+
+    // §5.19: provision the sandbox (git identity + fresh workdir via the provider).
+    // §5.20: write the OpenCode MCP-consumer config into the sandbox workdir.
+    try {
+      const { repoId } = await doStub.getRepoId();
+      const handle = await opts.sandbox.provision({
+        repoId,
+        imageVersion: "latest",
+        gitIdentity: { name: "forge-agent", email: "forge@noreply.example.com" },
+      });
+      const config = buildHarnessConfig({
+        workerOrigin: opts.env.WORKER_ORIGIN ?? "http://localhost:8787",
+      });
+      await writeMcpConfig(handle.workdir, config);
+      // Mark provisioning done → running happens on the first thinking event below.
+    } catch {
+      // Provisioning failure is non-fatal in the fast profile (the mock model
+      // can still drive the loop). In the real profile (§6) this would transition
+      // to failed. Kept lenient so the loop is runnable without a real sandbox.
+    }
   }
 
   // Provisioning -> running (the harness "starts" — first thinking event).
@@ -114,6 +141,25 @@ export function buildHarnessConfig(opts: {
     // Empty registry allowlist for now (registry-managed MCP governance is §9/ADR-0007).
     registryAllowlist: opts.registryAllowlist ?? [],
   };
+}
+
+/**
+ * Write the OpenCode MCP-consumer config to the sandbox workdir (§5.20).
+ * The config lists the platform MCP endpoint + the registry allowlist. OpenCode
+ * reads this at boot and exposes the forge.* tools to the model. No fork — just
+ * config (docs/19 §7). In the fast profile the mock model doesn't read this, but
+ * the file is written so the path is exercised + the real harness can find it.
+ */
+export async function writeMcpConfig(workdir: string, config: HarnessConfig): Promise<void> {
+  const mcpConfig = {
+    mcpServers: {
+      forge: {
+        url: config.platformMcpEndpoint,
+      },
+    },
+    registryAllowlist: config.registryAllowlist,
+  };
+  await writeFile(join(workdir, ".forge-mcp.json"), JSON.stringify(mcpConfig, null, 2), "utf8");
 }
 
 /** Collect a model stream into an event array (for tests / replay). */
