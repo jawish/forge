@@ -22,6 +22,8 @@ export interface Env {
   // The worker's own origin (for the agent harness MCP endpoint, §5.20).
   // Set via wrangler vars; defaults to http://localhost:8787 in local dev.
   WORKER_ORIGIN?: string;
+  // The sandbox DO namespace (Container-backed, for the real profile, §6.3).
+  SANDBOX_DO?: DurableObjectNamespace;
   // Durable Object: per-session hot state (docs/12 §2).
   SESSION_DO: DurableObjectNamespace;
   // D1: control-plane OLTP index (docs/12 §3).
@@ -94,11 +96,14 @@ export async function buildServices(profile: DevProfile, env?: Env): Promise<Pro
     cachedServices = {
       profile: "real",
       sandbox:
-        cfMod && useRealSandbox
-          ? new cfMod.CloudflareSandboxProvider({
-              accountId: env.SANDBOX_ACCOUNT_ID!,
-              apiToken: env.SANDBOX_API_TOKEN!,
-            })
+        cfMod && useRealSandbox && env.SANDBOX_DO
+          ? new cfMod.CloudflareSandboxProvider(
+              {
+                accountId: env.SANDBOX_ACCOUNT_ID!,
+                apiToken: env.SANDBOX_API_TOKEN!,
+              },
+              env.SANDBOX_DO,
+            )
           : new localMod.LocalSandboxProvider(),
       model:
         gwMod && useRealModel
