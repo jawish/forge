@@ -113,6 +113,8 @@ export const SESSION_DO_MIGRATION_STATEMENTS: readonly string[] = [
     process_id TEXT NOT NULL PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'pending',
     command TEXT,
+    conversation TEXT,
+    iteration INTEGER NOT NULL DEFAULT 0,
     exit_code INTEGER,
     created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
   )`,

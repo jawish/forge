@@ -73,6 +73,18 @@ export class SessionDO extends Agent<Env, SessionDOState> {
     } catch {
       // Column already exists — expected.
     }
+    try {
+      this.ctx.storage.sql.exec("ALTER TABLE agent_process ADD COLUMN conversation TEXT");
+    } catch {
+      // Column already exists.
+    }
+    try {
+      this.ctx.storage.sql.exec(
+        "ALTER TABLE agent_process ADD COLUMN iteration INTEGER NOT NULL DEFAULT 0",
+      );
+    } catch {
+      // Column already exists.
+    }
     this.migrated = true;
   }
 
@@ -81,134 +93,175 @@ export class SessionDO extends Agent<Env, SessionDOState> {
   }
 
   /**
-   * DO alarm — drives the agent lifecycle in two phases:
-   * 1. If the process hasn't started yet: call sandbox.startProcess("opencode run ...")
-   *    from within the DO (immune to waitUntil cancellation), store the process ID.
-   * 2. If the process is running: poll sandbox.getProcess() until it exits.
-   *
-   * The alarm runs in the DO's own execution context — it is NOT subject to
-   * the Worker's waitUntil timeout. This is how long-running agent execution
-   * works on Cloudflare Workers.
+   * DO alarm — runs ONE iteration of the agent loop per fire.
+   * Each alarm: read conversation → call model → exec commands → store → next alarm.
+   * Immune to waitUntil — each alarm is a fresh 30s CPU budget.
    */
   override async alarm(): Promise<void> {
     this.ensureMigrated();
     const meta = this.getMetaRow();
     if (!meta) return;
 
-    // Get the agent process record.
     const rows = this.ctx.storage.sql.exec(
-      "SELECT * FROM agent_process WHERE session_id = ? AND status IN ('pending', 'running')",
+      "SELECT * FROM agent_process WHERE session_id = ? AND status IN ('pending','running')",
       meta.id,
     );
     const allRows = Array.from(rows) as Array<{
       sandbox_id: string;
       process_id: string;
       status: string;
-      exit_code: number | null;
+      command: string | null;
+      conversation: string | null;
+      iteration: number;
     }>;
     const proc = allRows[0];
     if (!proc) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sandboxNs = (this.env as any)?.SANDBOX_DO;
-    if (!sandboxNs) {
-      console.error("[alarm] No SANDBOX_DO binding");
-      return;
-    }
+    if (!sandboxNs) return;
+
+    const maxIterations = 8;
+    const modelName = (this.env as { AI_GATEWAY_MODEL?: string }).AI_GATEWAY_MODEL ?? "grok-4.3";
 
     try {
       const { getSandbox } = await import("@cloudflare/sandbox");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sandbox: any = getSandbox(sandboxNs, proc.sandbox_id, {
         sleepAfter: "30m",
-        containerTimeouts: {
-          instanceGetTimeoutMS: 120_000,
-          portReadyTimeoutMS: 180_000,
-        },
+        containerTimeouts: { instanceGetTimeoutMS: 120_000, portReadyTimeoutMS: 180_000 },
       });
 
-      if (proc.status === "pending") {
-        // Run OpenCode via exec() from within the DO alarm.
-        // The DO alarm has its own execution context — no waitUntil timeout.
-        // The container should already be warm from the provisioning phase.
-        console.log("[alarm] Running OpenCode via exec in sandbox:", proc.sandbox_id);
+      const conversation: Array<{ role: string; content: string }> = proc.conversation
+        ? JSON.parse(proc.conversation)
+        : [
+            {
+              role: "system",
+              content: `You are an autonomous coding agent in a git repo at /workspace. Issue bash commands prefixed with "RUN:" (one per line). After commands run, you'll see output. When done, respond with "DONE:" + summary. Be thorough: explore, edit, test, verify.`,
+            },
+            { role: "user", content: `Task: ${proc.command ?? "no task"}` },
+          ];
 
-        const cmdRows = this.ctx.storage.sql.exec(
-          "SELECT command FROM agent_process WHERE process_id = ?",
-          proc.process_id,
-        );
-        const cmdRow = Array.from(cmdRows)[0] as { command: string } | undefined;
-        const command = cmdRow?.command ?? "echo 'no command'";
-        console.log("[alarm] Command:", command.slice(0, 100));
+      const iteration = proc.iteration;
+      console.log(`[alarm] Iteration ${iteration + 1}/${maxIterations}`);
 
-        // Mark as running BEFORE exec.
-        this.ctx.storage.sql.exec(
-          "UPDATE agent_process SET status = 'running' WHERE process_id = ?",
-          proc.process_id,
-        );
+      const prompt = conversation.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
 
-        // Execute OpenCode. This blocks until it finishes.
-        const result = await sandbox.exec(command, { cwd: "/workspace" });
-        const exitCode = result.exitCode ?? (result.success ? 0 : 1);
-        console.log(
-          "[alarm] OpenCode exit:",
-          exitCode,
-          "stdout:",
-          (result.stdout ?? "").slice(0, 200),
-        );
+      // Call model via AI Gateway.
+      const gwMod = await import("../model/ai-gateway-provider").catch(() => null);
+      if (!gwMod) {
+        await this.transitionTo({ status: "failed" }, "no_model").catch(() => {});
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const provider: any = new gwMod.AiGatewayModelProvider({
+        endpoint: (this.env as { AI_GATEWAY_ENDPOINT?: string }).AI_GATEWAY_ENDPOINT!,
+        apiKey: (this.env as { AI_GATEWAY_KEY?: string }).AI_GATEWAY_KEY!,
+        provider: (this.env as { AI_GATEWAY_PROVIDER?: string }).AI_GATEWAY_PROVIDER ?? "xai",
+      });
 
-        this.ctx.storage.sql.exec(
-          "UPDATE agent_process SET status = 'finished', exit_code = ? WHERE process_id = ?",
-          exitCode,
-          proc.process_id,
-        );
+      let modelResponse = "";
+      for await (const event of provider.stream({ prompt, model: modelName })) {
+        if (event.type === "thinking_delta") modelResponse += event.text;
+        else if (event.type === "finish") break;
+      }
+      console.log(`[alarm] Turn ${iteration + 1}:`, modelResponse.slice(0, 200));
+      conversation.push({ role: "assistant", content: modelResponse });
 
-        if (exitCode !== 0) {
-          await this.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
-        } else {
-          const current = await this.getStatus();
-          if (current.status === "active") {
-            await this.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
-          }
-        }
+      if (modelResponse.includes("DONE:")) {
+        console.log("[alarm] DONE — finishing");
+        await this.finishAgent(sandbox, proc, conversation);
         return;
       }
 
-      // Phase 2: retry if the previous exec was interrupted.
-      if (proc.status === "running") {
-        this.ctx.storage.sql.exec(
-          "UPDATE agent_process SET status = 'pending' WHERE process_id = ?",
-          proc.process_id,
-        );
-        this.ctx.storage.setAlarm(Date.now() + 3_000);
+      const commands = modelResponse
+        .split("\n")
+        .filter((l: string) => l.trim().startsWith("RUN:"))
+        .map((l: string) => l.trim().slice(4).trim());
+      const outputs: string[] = [];
+      for (const cmd of commands) {
+        console.log("[alarm] Exec:", cmd.slice(0, 80));
+        const result = await sandbox.exec(cmd, { cwd: "/workspace" });
+        const out = (result.exitCode === 0 ? result.stdout : result.stderr) || "(no output)";
+        outputs.push(`$ ${cmd}\n${out.slice(0, 800)}\n(exit: ${result.exitCode})`);
       }
+      if (outputs.length > 0) conversation.push({ role: "user", content: outputs.join("\n\n") });
+
+      if (iteration + 1 >= maxIterations) {
+        console.log("[alarm] Max iterations — finishing");
+        await this.finishAgent(sandbox, proc, conversation);
+        return;
+      }
+
+      this.ctx.storage.sql.exec(
+        "UPDATE agent_process SET conversation=?, iteration=?, status='running' WHERE process_id=?",
+        JSON.stringify(conversation),
+        iteration + 1,
+        proc.process_id,
+      );
+      this.ctx.storage.setAlarm(Date.now() + 2_000);
     } catch (err) {
       console.error("[alarm] Error:", err instanceof Error ? err.message : String(err));
-      this.ctx.storage.setAlarm(Date.now() + 15_000);
+      this.ctx.storage.setAlarm(Date.now() + 5_000);
     }
   }
 
-  /** Store the agent execution info (called by the agent loop after provisioning). */
+  /** Commit, push, transition to ready_for_pr. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async finishAgent(
+    sandbox: any,
+    proc: { process_id: string; sandbox_id: string },
+    conv: Array<{ role: string; content: string }>,
+  ): Promise<void> {
+    const task =
+      conv
+        .find((m) => m.role === "user")
+        ?.content.slice(0, 50)
+        .replace(/'/g, "") ?? "task";
+    const commit = await sandbox.exec(
+      `cd /workspace && git add -A && git commit -m 'forge: ${task}' 2>&1 || true`,
+      { cwd: "/workspace" },
+    );
+    console.log("[alarm] Commit:", commit.exitCode, commit.stdout?.slice(0, 100));
+
+    const env = this.env as { GITHUB_TOKEN?: string; GITHUB_REPO_URL?: string };
+    if (env.GITHUB_TOKEN && env.GITHUB_REPO_URL) {
+      const push = await sandbox.exec("cd /workspace && git push origin HEAD 2>&1", {
+        cwd: "/workspace",
+      });
+      console.log("[alarm] Push:", push.exitCode, push.stdout?.slice(0, 100));
+    }
+
+    const diff = await sandbox
+      .exec("cd /workspace && git diff HEAD~1 --stat 2>&1 || echo 'committed'", {
+        cwd: "/workspace",
+      })
+      .catch(() => ({ stdout: "committed" }));
+    const diffSummary = diff.stdout?.slice(0, 500) ?? "committed";
+
+    this.ctx.storage.sql.exec(
+      "UPDATE agent_process SET status='finished' WHERE process_id=?",
+      proc.process_id,
+    );
+    await this.transitionTo({ status: "ready_for_pr" }, "agent_complete").catch(() => {});
+    console.log("[alarm] → ready_for_pr. Diff:", diffSummary.slice(0, 100));
+  }
+
+  /** Store agent execution info (called by the agent loop after provisioning). */
   async setAgentProcess(input: { sandboxId: string; command: string }): Promise<void> {
     this.ensureMigrated();
     const meta = this.getMetaRow();
     if (!meta) return;
-
-    // Use a unique ID for this process record. The actual process ID gets
-    // filled in when the alarm starts the process.
-    const recordId = `agentproc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const recordId = `ap_${Date.now().toString(36)}`;
     this.ctx.storage.sql.exec(
-      `INSERT OR REPLACE INTO agent_process (session_id, sandbox_id, process_id, status, command)
-       VALUES (?, ?, ?, 'pending', ?)`,
+      "INSERT OR REPLACE INTO agent_process (session_id, sandbox_id, process_id, status, command, iteration) VALUES (?, ?, ?, 'pending', ?, 0)",
       meta.id,
       input.sandboxId,
       recordId,
       input.command,
     );
-
-    // Set the first alarm to start the process in 2s.
     this.ctx.storage.setAlarm(Date.now() + 2_000);
-    console.log("[agent] Agent process record stored, alarm set for", input.sandboxId);
+    console.log("[agent] Alarm set for", input.sandboxId);
   }
 
   /** A WS connection joined — send a state snapshot (docs/10 §4, §5.12). */
