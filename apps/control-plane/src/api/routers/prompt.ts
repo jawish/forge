@@ -30,8 +30,8 @@ export async function drainAgentTurns(): Promise<void> {
 
 export const promptRouter = t.router({
   submit: authedProcedure.input(promptSubmitSchema).mutation(async ({ input, ctx }) => {
-    const stub = ctx.env.SESSION_DO.idFromName(input.sessionId);
-    const doStub = ctx.env.SESSION_DO.get(stub) as unknown as SessionDOStub;
+    const stub = ctx.env.sessionDo.idFromName(input.sessionId);
+    const doStub = ctx.env.sessionDo.get(stub) as unknown as SessionDOStub;
     const { promptId } = await doStub.submitPrompt({
       userId: ctx.userId,
       content: input.content,

@@ -55,8 +55,8 @@ export function buildSlackPorts(env: Env): SlackPorts {
     async spawnSession(repoId, _trigger: SlackTrigger) {
       // Spawn a session via the DO (the same path session.create uses).
       const sessionId = `slack_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const idObj = env.SESSION_DO.idFromName(sessionId);
-      const stub = env.SESSION_DO.get(idObj) as unknown as {
+      const idObj = env.sessionDo.idFromName(sessionId);
+      const stub = env.sessionDo.get(idObj) as unknown as {
         spawn(i: {
           repoId: string;
           branch: string;

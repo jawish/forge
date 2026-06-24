@@ -110,8 +110,8 @@ export async function callTool(
   sessionId: string,
   env: Env,
 ): Promise<ToolCallResult> {
-  const stub = env.SESSION_DO.idFromName(sessionId);
-  const doStub = env.SESSION_DO.get(stub) as unknown as SessionDOStub;
+  const stub = env.sessionDo.idFromName(sessionId);
+  const doStub = env.sessionDo.get(stub) as unknown as SessionDOStub;
   try {
     switch (toolName) {
       case "forge.reportStatus":

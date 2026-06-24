@@ -195,8 +195,8 @@ export function buildVerifyPorts(env: Env, sessionId: string): VerifyPorts {
       return `r2://forge-artifacts/${key}`;
     },
     async recordArtifact(artifact) {
-      const idObj = env.SESSION_DO.idFromName(sessionId);
-      const stub = env.SESSION_DO.get(idObj) as unknown as {
+      const idObj = env.sessionDo.idFromName(sessionId);
+      const stub = env.sessionDo.get(idObj) as unknown as {
         createArtifact(a: unknown): Promise<{ artifactId: string }>;
       };
       return stub.createArtifact(artifact);

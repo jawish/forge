@@ -49,8 +49,8 @@ export async function runAgentTurn(opts: {
   sandbox: SandboxProvider;
   env: Env;
 }): Promise<{ finalStatus: SessionStatus }> {
-  const stub = opts.env.SESSION_DO.idFromName(opts.sessionId);
-  const doStub = opts.env.SESSION_DO.get(stub) as unknown as AgentDOStub;
+  const stub = opts.env.sessionDo.idFromName(opts.sessionId);
+  const doStub = opts.env.sessionDo.get(stub) as unknown as AgentDOStub;
 
   // Activate + provision the session on first prompt (docs/11 §3: queued → active).
   // Spawn leaves the session in queued; the first prompt transitions to active

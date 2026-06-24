@@ -79,15 +79,36 @@ export default {
       // The public route is /ws/:sessionId (docs/10 §4). The Agents SDK
       // routeAgentRequest expects /{prefix}/{namespace}/{name}, so we rewrite
       // /ws/:sessionId → /ws/SESSION_DO/:sessionId with prefix='ws'.
-      if (url.pathname.startsWith("/ws/") && request.headers.get("upgrade") === "websocket") {
+      // We pass all /ws/ requests to routeAgentRequest (it handles the upgrade
+      // negotiation; the upgrade header may be normalized by CF's edge).
+      if (url.pathname.startsWith("/ws/")) {
         const sessionId = url.pathname.split("/")[2];
         if (sessionId) {
-          const rewritten = new Request(new URL(`/ws/SESSION_DO/${sessionId}`, url), request);
-          const wsResponse = await routeAgentRequest(rewritten, env, { prefix: "ws" });
-          if (wsResponse) {
-            span.setAttribute("http.status", 101);
-            span.setAttribute(ATTR.SESSION_ID, sessionId);
-            return wsResponse;
+          // Use routeAgentRequest with the kebab-case namespace that the SDK
+          // generates from the camelCase binding name (sessionDo → session-do).
+          // The SDK's camelCaseToKebabCase mangles SESSION_DO, so we use the
+          // kebab-case form directly in the rewritten URL.
+          const rewritten = new Request(new URL(`/ws/session-do/${sessionId}`, url), request);
+          try {
+            const wsResponse = await routeAgentRequest(rewritten, env, { prefix: "ws" });
+            if (wsResponse) {
+              span.setAttribute("http.status", wsResponse.status);
+              span.setAttribute(ATTR.SESSION_ID, sessionId);
+              return wsResponse;
+            }
+          } catch (wsErr) {
+            console.error(
+              "[ws] routeAgentRequest failed:",
+              wsErr instanceof Error ? wsErr.message : String(wsErr),
+            );
+            span.setAttribute("http.status", 500);
+            return jsonResponse(
+              {
+                error: "ws_failed",
+                message: wsErr instanceof Error ? wsErr.message : String(wsErr),
+              },
+              500,
+            );
           }
         }
       }
@@ -140,8 +161,8 @@ export default {
             // (Session name lookup via D1 index is §8 widening; here we transition
             // any session whose name starts with the shortid.)
             const sessionId = `sess_${shortid}`;
-            const idObj = env.SESSION_DO.idFromName(sessionId);
-            const stub = env.SESSION_DO.get(idObj) as unknown as {
+            const idObj = env.sessionDo.idFromName(sessionId);
+            const stub = env.sessionDo.get(idObj) as unknown as {
               transitionTo(to: { status: "merged" | "closed" }, reason: string): Promise<unknown>;
             };
             await stub.transitionTo({ status: transition.status }, transition.reason).catch(() => {

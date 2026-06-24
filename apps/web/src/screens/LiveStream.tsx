@@ -29,8 +29,15 @@ export function SessionLiveScreen({
   });
 
   // Open the WS and consume the typed event stream (docs/10 §4).
+  // The WS connects to the control-plane origin (VITE_API_ORIGIN), not the web
+  // app's own origin — in the deployed setup, the web app is on Pages and the
+  // WS gateway is on the Workers control-plane. In dev (Vite proxy), same-origin.
   useEffect(() => {
-    const wsUrl = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws/${sessionId}`;
+    const apiOrigin = import.meta.env.VITE_API_ORIGIN ?? "";
+    const wsHost = apiOrigin ? new URL(apiOrigin).host : location.host;
+    const wsProto =
+      wsHost === location.host ? (location.protocol === "https:" ? "wss:" : "ws:") : "wss:"; // cross-origin to deployed worker = always wss
+    const wsUrl = `${wsProto}//${wsHost}/ws/${sessionId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.onmessage = (ev) => {
@@ -78,7 +85,7 @@ export function SessionLiveScreen({
         <h2 style={{ margin: 0 }}>Session</h2>
         <div style={{ display: "flex", gap: 8 }}>
           <a
-            href={`/code/${sessionId}`}
+            href={`${import.meta.env.VITE_API_ORIGIN ?? ""}/code/${sessionId}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{

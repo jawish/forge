@@ -1,4 +1,4 @@
-// Session router (seam 1, docs/10 §2). Procedures call env.SESSION_DO.get(id)
+// Session router (seam 1, docs/10 §2). Procedures call env.sessionDo.get(id)
 // directly — in-process DO access (seam 2). Inputs are zod from @forge/domain.
 
 import {
@@ -33,8 +33,8 @@ interface SessionDOStub {
 
 export const sessionRouter = t.router({
   get: authedProcedure.input(sessionGetInputSchema).query(async ({ input, ctx }) => {
-    const stub = ctx.env.SESSION_DO.idFromName(input.sessionId);
-    const doStub = ctx.env.SESSION_DO.get(stub) as unknown as SessionDOStub;
+    const stub = ctx.env.sessionDo.idFromName(input.sessionId);
+    const doStub = ctx.env.sessionDo.get(stub) as unknown as SessionDOStub;
     return doStub.getStatus();
   }),
   list: authedProcedure.input(sessionListInputSchema).query(async ({ input, ctx }) => {
@@ -139,8 +139,8 @@ export const sessionRouter = t.router({
     // the DO's internal id (this.ctx.id.toString()) — idFromName(internalId)
     // would create a different DO.
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const stub = ctx.env.SESSION_DO.idFromName(sessionId);
-    const doStub = ctx.env.SESSION_DO.get(stub) as unknown as SessionDOStub;
+    const stub = ctx.env.sessionDo.idFromName(sessionId);
+    const doStub = ctx.env.sessionDo.get(stub) as unknown as SessionDOStub;
     await doStub.spawn({
       repoId: input.repoId,
       branch: input.branch,
@@ -174,8 +174,8 @@ export const sessionRouter = t.router({
   }),
 
   cancel: authedProcedure.input(sessionCancelInputSchema).mutation(async ({ input, ctx }) => {
-    const stub = ctx.env.SESSION_DO.idFromName(input.sessionId);
-    const doStub = ctx.env.SESSION_DO.get(stub) as unknown as SessionDOStub;
+    const stub = ctx.env.sessionDo.idFromName(input.sessionId);
+    const doStub = ctx.env.sessionDo.get(stub) as unknown as SessionDOStub;
     const result = await doStub.cancel(input.reason);
     // Update the D1 projection to reflect the terminal status.
     await ensureD1SessionTable(ctx.env.DB);

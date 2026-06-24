@@ -49,9 +49,7 @@ export class AiGatewayModelProvider implements ModelProvider {
       headers: {
         authorization: `Bearer ${this.cfg.apiKey}`,
         "content-type": "application/json",
-        ...(this.cfg.provider === "anthropic"
-          ? { "anthropic-version": "2023-06-01" }
-          : {}),
+        ...(this.cfg.provider === "anthropic" ? { "anthropic-version": "2023-06-01" } : {}),
       },
       body: JSON.stringify({
         model: input.model,

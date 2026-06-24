@@ -29,7 +29,7 @@ export interface Env {
   // Browser Rendering binding (for frontend repo screenshots, §8.2).
   BROWSER?: Fetcher;
   // Durable Object: per-session hot state (docs/12 §2).
-  SESSION_DO: DurableObjectNamespace;
+  sessionDo: DurableObjectNamespace;
   // D1: control-plane OLTP index (docs/12 §3).
   DB: D1Database;
   // R2: blobs + WORM audit (docs/12 §4).

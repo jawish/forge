@@ -18,7 +18,7 @@
 
   // The Durable Object holding all per-session hot state (docs/12 §2).
   "durable_objects": {
-    "bindings": [{ "name": "SESSION_DO", "class_name": "SessionDO" }],
+    "bindings": [{ "name": "sessionDo", "class_name": "SessionDO" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionDO"] }],
 
@@ -65,7 +65,7 @@
       // The SessionDO durable object (required for all sessions — not inherited
       // from top-level by named envs).
       "durable_objects": {
-        "bindings": [{ "name": "SESSION_DO", "class_name": "SessionDO" }],
+        "bindings": [{ "name": "sessionDo", "class_name": "SessionDO" }],
       },
       "migrations": [
         {
