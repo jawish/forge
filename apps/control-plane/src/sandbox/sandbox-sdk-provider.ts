@@ -35,10 +35,8 @@ export interface SandboxSdkConfig {
   forgeMcpEndpoint?: string;
 }
 
-/** A handle to a provisioned CF Sandbox. Stores the sandbox ID so the provider
- * can re-acquire the sandbox client on subsequent calls. */
+/** A handle to a provisioned CF Sandbox. */
 export interface SandboxSdkHandle extends SandboxHandle {
-  /** The CF Sandbox SDK sandbox ID (used with getSandbox to re-acquire). */
   sandboxId: string;
 }
 
@@ -49,6 +47,46 @@ async function ensureSandboxMod(): Promise<typeof import("@cloudflare/sandbox")>
   if (SandboxMod) return SandboxMod;
   SandboxMod = await import("@cloudflare/sandbox");
   return SandboxMod;
+}
+
+/**
+ * Build the environment variables to pass into the sandbox for OpenCode.
+ * These are set on each exec() call so OpenCode can authenticate with the
+ * model provider + reach the forge MCP server.
+ */
+export function buildSandboxEnv(cfg: SandboxSdkConfig, sessionId: string): Record<string, string> {
+  const env: Record<string, string> = {
+    // OpenCode needs to know the session ID so it can pass it to forge.* MCP tools.
+    FORGE_SESSION_ID: sessionId,
+    // The forge MCP endpoint (OpenCode connects to this for forge.reportStatus etc.)
+    FORGE_MCP_ENDPOINT: cfg.forgeMcpEndpoint ?? "",
+  };
+
+  // Pass the model API key under the provider-specific env var name.
+  // OpenCode reads these from the environment to authenticate.
+  if (cfg.modelApiKey) {
+    const providerKey = modelEnvVarName(cfg.modelProvider ?? "xai");
+    env[providerKey] = cfg.modelApiKey;
+  }
+
+  return env;
+}
+
+/** Map a provider name to the env var OpenCode expects. */
+function modelEnvVarName(provider: string): string {
+  switch (provider.toLowerCase()) {
+    case "anthropic":
+      return "ANTHROPIC_API_KEY";
+    case "openai":
+      return "OPENAI_API_KEY";
+    case "xai":
+      return "XAI_API_KEY";
+    case "google":
+    case "gemini":
+      return "GEMINI_API_KEY";
+    default:
+      return "OPENAI_API_KEY"; // fallback
+  }
 }
 
 /**
@@ -72,8 +110,6 @@ export class SandboxSdkProvider implements SandboxProvider {
     const sandbox: any = mod.getSandbox(this.sandboxNs, sandboxId, {
       sleepAfter: this.cfg.sleepAfter ?? "10m",
     });
-    // getSandbox returns a Sandbox instance. Its .client property provides
-    // commands, files, git, backup, etc. (the SandboxClient API).
     return sandbox.client ?? sandbox;
   }
 
@@ -101,15 +137,6 @@ export class SandboxSdkProvider implements SandboxProvider {
     // Write the OpenCode config (model + MCP).
     await this.writeOpenCodeConfig(sandbox);
 
-    // Run prewarm commands if specified.
-    if (spec.egressAllow) {
-      for (const cmd of spec.egressAllow) {
-        if (cmd.startsWith("prewarm:")) {
-          await sandbox.commands.exec(cmd.slice(8)).catch(() => {});
-        }
-      }
-    }
-
     return {
       id: sandboxId,
       sandboxId,
@@ -118,11 +145,20 @@ export class SandboxSdkProvider implements SandboxProvider {
     };
   }
 
-  async exec(handle: SandboxHandle, command: string[]): Promise<ExecResult> {
+  async exec(
+    handle: SandboxHandle,
+    command: string[],
+    opts?: { sessionId?: string },
+  ): Promise<ExecResult> {
     const sandbox = await this.getSandboxClient((handle as SandboxSdkHandle).sandboxId);
     const started = Date.now();
     const cmd = command.join(" ");
-    const result = await sandbox.commands.exec(cmd, { cwd: "/workspace" });
+    // Pass model API keys + session ID into the command's environment.
+    const execOpts: { cwd: string; env?: Record<string, string> } = { cwd: "/workspace" };
+    if (opts?.sessionId) {
+      execOpts.env = buildSandboxEnv(this.cfg, opts.sessionId);
+    }
+    const result = await sandbox.commands.exec(cmd, execOpts);
     return {
       exitCode: result.exitCode ?? (result.success ? 0 : 1),
       stdout: result.stdout ?? "",
@@ -134,23 +170,14 @@ export class SandboxSdkProvider implements SandboxProvider {
   async snapshot(handle: SandboxHandle): Promise<SnapshotRef> {
     const sandbox = await this.getSandboxClient((handle as SandboxSdkHandle).sandboxId);
     const backup = await sandbox.backup.create();
-    return {
-      id: backup.id,
-      location: `cf-sandbox-backup://${backup.id}`,
-      takenAt: Date.now(),
-    };
+    return { id: backup.id, location: `cf-sandbox-backup://${backup.id}`, takenAt: Date.now() };
   }
 
   async restore(ref: SnapshotRef, spec: ProvisionSpec): Promise<SandboxSdkHandle> {
     const sandboxId = `forge-${spec.repoId}-restored-${Date.now()}`;
     const sandbox = await this.getSandboxClient(sandboxId);
     await sandbox.backup.restore(ref.id);
-    return {
-      id: sandboxId,
-      sandboxId,
-      workdir: "/workspace",
-      imageVersion: spec.imageVersion,
-    };
+    return { id: sandboxId, sandboxId, workdir: "/workspace", imageVersion: spec.imageVersion };
   }
 
   async destroy(handle: SandboxHandle): Promise<void> {
@@ -158,25 +185,45 @@ export class SandboxSdkProvider implements SandboxProvider {
     await sandbox.destroy();
   }
 
-  /**
-   * Write the OpenCode config into the sandbox. This configures:
-   * - The model provider + API key (via env var, not in the config file)
-   * - The forge MCP server (for reportStatus, completePR, etc.)
-   */
+  /** Write the OpenCode config into the sandbox (model + MCP settings). */
   private async writeOpenCodeConfig(sandbox: unknown): Promise<void> {
-    const config = {
+    // The .opencode.json config sets up:
+    // 1. The forge MCP server (for forge.reportStatus, forge.completePR, etc.)
+    // 2. A custom OpenAI-compatible provider pointing at the AI Gateway
+    //    (so the model calls route through the gateway for cost tracking/caching)
+    const config: Record<string, unknown> = {
       $schema: "https://opencode.ai/config.json",
-      // The model is set via env var (modelApiKey + modelProvider) at boot.
-      // OpenCode reads XAI_API_KEY / ANTHROPIC_API_KEY / OPENAI_API_KEY from env.
-      mcp: this.cfg.forgeMcpEndpoint
-        ? {
-            forge: {
-              type: "remote",
-              url: this.cfg.forgeMcpEndpoint,
-            },
-          }
-        : {},
     };
+
+    if (this.cfg.forgeMcpEndpoint) {
+      config.mcp = {
+        forge: {
+          type: "remote",
+          url: this.cfg.forgeMcpEndpoint,
+        },
+      };
+    }
+
+    // Configure a custom provider that routes through the CF AI Gateway.
+    // The AI Gateway exposes an OpenAI-compatible endpoint per provider.
+    // OpenCode reads the API key from the env var set by buildSandboxEnv().
+    if (this.cfg.modelApiKey && this.cfg.modelProvider) {
+      config.provider = {
+        "forge-gateway": {
+          name: "Forge AI Gateway",
+          npm: "@ai-sdk/openai-compatible",
+          options: {
+            baseURL: `https://gateway.ai.cloudflare.com/v1/ad2ec34ab35ce8f5d899dd1363e876b3/forge-dev-gateway/${this.cfg.modelProvider}/v1`,
+            apiKey: this.cfg.modelApiKey,
+          },
+          models: {
+            [this.cfg.modelId ?? "grok-4.3"]: {
+              name: this.cfg.modelId ?? "grok-4.3",
+            },
+          },
+        },
+      };
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = sandbox as any;

@@ -43,6 +43,12 @@ export interface SnapshotRef {
   takenAt: number;
 }
 
+/** Optional exec options. */
+export interface ExecOptions {
+  /** The session ID (used to pass env vars like model keys into the sandbox). */
+  sessionId?: string;
+}
+
 /**
  * The sandbox provider interface. All methods are async (network for CF Sandbox,
  * subprocess for Local). Implementations MUST enforce the egress allowlist
@@ -52,8 +58,8 @@ export interface SandboxProvider {
   /** Boot a sandbox from an image version, scoped to a workdir. */
   provision(spec: ProvisionSpec): Promise<SandboxHandle>;
   /** Run a command in the sandbox (subject to the egress allowlist). */
-  exec(handle: SandboxHandle, command: string[]): Promise<ExecResult>;
-  /** Capture a filesystem snapshot (warm-pool / restore-before-reopen). */
+  exec(handle: SandboxHandle, command: string[], opts?: ExecOptions): Promise<ExecResult>;
+  /** Capture a filesystem snapshot (warm-pool / restore). */
   snapshot(handle: SandboxHandle): Promise<SnapshotRef>;
   /** Restore a sandbox from a snapshot (copy-on-write overlay). */
   restore(ref: SnapshotRef, spec: ProvisionSpec): Promise<SandboxHandle>;

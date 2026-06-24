@@ -99,7 +99,9 @@ async function runOpenCodeInSandbox(
   handle: SandboxHandleLite,
 ): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
-  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
+  // Use the custom "forge-gateway" provider (configured in .opencode.json to
+  // route through the AI Gateway) instead of the native provider prefix.
+  const modelFlag = `forge-gateway/${modelName}`;
 
   await doStub.reportStatus({ activity: "running", summary: "OpenCode booting" }).catch(() => {});
 
@@ -111,15 +113,11 @@ async function runOpenCodeInSandbox(
     // The prompt is passed as an argument; OpenCode handles the edit-test loop
     // internally. We capture the exit code + output.
     const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
-    const result = await opts.sandbox.exec(handle, [
-      "opencode",
-      "run",
-      "--format",
-      "json",
-      "-m",
-      `${modelProvider}/${modelName}`,
-      escapedPrompt,
-    ]);
+    const result = await opts.sandbox.exec(
+      handle,
+      ["opencode", "run", "--format", "json", "-m", modelFlag, escapedPrompt],
+      { sessionId: opts.sessionId },
+    );
 
     // If OpenCode finished but didn't call forge.completePR (the session is
     // still active/running), mark as no_change.

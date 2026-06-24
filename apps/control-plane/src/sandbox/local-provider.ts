@@ -44,7 +44,11 @@ export class LocalSandboxProvider implements SandboxProvider {
     return { id, workdir, imageVersion: spec.imageVersion };
   }
 
-  async exec(handle: SandboxHandle, command: string[]): Promise<ExecResult> {
+  async exec(
+    handle: SandboxHandle,
+    command: string[],
+    _opts?: { sessionId?: string },
+  ): Promise<ExecResult> {
     const workdir = this.workdirs.get(handle.id) ?? handle.workdir;
     const started = Date.now();
     const [cmd, ...args] = command;
