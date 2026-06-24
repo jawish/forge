@@ -98,8 +98,8 @@ export async function runAgentTurn(opts: {
     opts.env.SANDBOX_DO ? "yes" : "no",
   );
   if (sandboxHandle && opts.env.SANDBOX_DO) {
-    // Real mode: run OpenCode in the sandbox.
-    return runOpenCodeInSandbox(opts, doStub, sandboxHandle);
+    // Real mode: direct agent loop (model → sandbox exec → completePR).
+    return runDirectAgentLoop(opts, doStub, sandboxHandle);
   }
 
   // Fast/fallback mode: stream the model directly (mock or AI Gateway).
@@ -107,42 +107,114 @@ export async function runAgentTurn(opts: {
 }
 
 /**
- * Real mode: run OpenCode as a background process inside the CF Sandbox.
- * Uses startBackground (non-blocking) so the Worker doesn't hit the request
- * timeout. The DO alarm polls the process status.
+ * Direct agent loop — runs the model via AI Gateway and executes commands in
+ * the sandbox via exec(). This is a real coding agent without the OpenCode
+ * subprocess dependency:
  *
- * OpenCode calls forge.* MCP tools back to the Worker's /api/mcp endpoint
- * as it works. These arrive as separate HTTP requests and transition the DO.
+ * 1. Call the model with the prompt + system message describing available tools
+ * 2. Parse the model's response for file write commands
+ * 3. Execute writes via sandbox.exec("echo '...' > file")
+ * 4. Run any test/build commands
+ * 5. Call forge.completePR via the DO when done
+ *
+ * All real — no mocks. The sandbox is a real CF Container with the repo cloned.
  */
-async function runOpenCodeInSandbox(
-  opts: { sessionId: string; prompt: string; sandbox: SandboxProvider; env: Env },
+async function runDirectAgentLoop(
+  opts: {
+    sessionId: string;
+    prompt: string;
+    sandbox: SandboxProvider;
+    env: Env;
+    model: ModelProvider;
+  },
   doStub: AgentDOStub,
   handle: SandboxHandleLite,
 ): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
   const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
-  const sandboxId = handle.sandboxId ?? handle.id;
 
-  await doStub.reportStatus({ activity: "running", summary: "OpenCode booting" }).catch(() => {});
+  await doStub.reportStatus({ activity: "running", summary: "Agent thinking" }).catch(() => {});
 
   try {
-    const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
+    // Build a system prompt that instructs the model to respond with specific
+    // tool-call format that we can parse and execute in the sandbox.
+    const systemPrompt = `You are a coding agent working inside a repository at /workspace.
+You have access to a bash shell. Respond with bash commands to accomplish the task.
+Each command should be on its own line prefixed with "RUN:".
+When you are done, respond with "DONE:" followed by a summary of what you changed.
+Keep your response concise — just the commands and the DONE line.`;
 
-    // Build the OpenCode command string. The DO alarm will execute this
-    // inside the sandbox (immune to waitUntil cancellation).
-    const command = `opencode run --format json -m ${modelProvider}/${modelName} "${escapedPrompt}"`;
+    // Call the model via the AI Gateway.
+    console.log("[agent] Calling model:", `${modelProvider}/${modelName}`);
+    let modelResponse = "";
+    for await (const event of opts.model.stream({
+      prompt: `${systemPrompt}\n\nTask: ${opts.prompt}`,
+      model: modelName,
+    })) {
+      if (event.type === "thinking_delta") {
+        modelResponse += event.text;
+      } else if (event.type === "finish") {
+        break;
+      }
+    }
 
-    // Store the command in the DO — the alarm will call sandbox.startProcess
-    // from within the DO's execution context (no waitUntil cancellation).
-    await doStub.setAgentProcess({ sandboxId, command }).catch((err) => {
-      console.error(
-        "[agent] setAgentProcess failed:",
-        err instanceof Error ? err.message : String(err),
+    console.log("[agent] Model response (first 500):", modelResponse.slice(0, 500));
+
+    // Parse the model's response for RUN: commands.
+    const commands = modelResponse
+      .split("\n")
+      .filter((line) => line.trim().startsWith("RUN:"))
+      .map((line) => line.trim().slice(4).trim());
+
+    console.log("[agent] Parsed", commands.length, "commands from model response");
+
+    // Execute each command in the sandbox.
+    for (const cmd of commands) {
+      console.log("[agent] Executing:", cmd.slice(0, 100));
+      const result = await opts.sandbox.exec(handle, [cmd], { sessionId: opts.sessionId });
+      console.log("[agent] Exit:", result.exitCode, "stdout:", result.stdout.slice(0, 100));
+      if (result.exitCode !== 0) {
+        console.error("[agent] Command failed:", result.stderr.slice(0, 200));
+      }
+    }
+
+    // Check if there are changes (git diff).
+    const statusResult = await opts.sandbox.exec(
+      handle,
+      ["cd /workspace && git add -A && git status --porcelain"],
+      {
+        sessionId: opts.sessionId,
+      },
+    );
+    const hasChanges = statusResult.exitCode === 0 && statusResult.stdout.trim().length > 0;
+    console.log("[agent] git status:", statusResult.stdout.slice(0, 200));
+
+    if (hasChanges) {
+      // Get the diff summary.
+      const diffSummary = statusResult.stdout.slice(0, 500);
+
+      // Commit the changes.
+      await opts.sandbox.exec(
+        handle,
+        ["cd /workspace && git add -A && git commit -m 'forge: " + opts.prompt.slice(0, 50) + "'"],
+        { sessionId: opts.sessionId },
       );
-    });
-    console.log("[agent] Agent process queued for alarm-driven execution");
+
+      // Signal completion via the DO.
+      await doStub.completePR({ diffSummary, commitSha: "auto" }).catch((err) => {
+        console.error(
+          "[agent] completePR failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      });
+      console.log("[agent] completePR called, session should transition to ready_for_pr");
+    } else {
+      // No changes — mark as no_change.
+      await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
+      console.log("[agent] No changes, transitioning to no_change");
+    }
   } catch (err) {
-    console.error("[agent] OpenCode failed:", err instanceof Error ? err.message : String(err));
+    console.error("[agent] Direct loop failed:", err instanceof Error ? err.message : String(err));
     await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
   }
 
