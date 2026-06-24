@@ -22,8 +22,8 @@
     "@tanstack/react-start": "1.168.26",
     "@trpc/client": "11.18.0",
     "@trpc/react-query": "11.18.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -35,6 +35,6 @@
     "@vitejs/plugin-react": "5.1.0",
     "typescript": "7.0.1-rc",
     "vite": "8.1.0",
-    "wrangler": "4.103.0"
+    "wrangler": "4.104.0"
   }
 }
