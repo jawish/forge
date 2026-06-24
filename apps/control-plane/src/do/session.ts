@@ -74,85 +74,128 @@ export class SessionDO extends Agent<Env, SessionDOState> {
   }
 
   /**
-   * DO alarm — polls the agent background process. When OpenCode finishes,
-   * transitions the session to the appropriate terminal state.
+   * DO alarm — drives the agent lifecycle in two phases:
+   * 1. If the process hasn't started yet: call sandbox.startProcess("opencode run ...")
+   *    from within the DO (immune to waitUntil cancellation), store the process ID.
+   * 2. If the process is running: poll sandbox.getProcess() until it exits.
    *
-   * The agent loop starts OpenCode via startProcess (fire-and-forget), stores
-   * the process ID + sandbox ID in SQLite, and sets an alarm. The alarm fires
-   * every 10s to check if OpenCode finished.
+   * The alarm runs in the DO's own execution context — it is NOT subject to
+   * the Worker's waitUntil timeout. This is how long-running agent execution
+   * works on Cloudflare Workers.
    */
   override async alarm(): Promise<void> {
     this.ensureMigrated();
     const meta = this.getMetaRow();
     if (!meta) return;
 
-    // Check if there's a running agent process.
+    // Get the agent process record.
     const rows = this.ctx.storage.sql.exec(
-      "SELECT sandbox_id, process_id FROM agent_process WHERE session_id = ? AND status = 'running'",
+      "SELECT * FROM agent_process WHERE session_id = ? AND status IN ('pending', 'running')",
       meta.id,
     );
-    const allRows = Array.from(rows) as Array<{ sandbox_id: string; process_id: string }>;
+    const allRows = Array.from(rows) as Array<{
+      sandbox_id: string;
+      process_id: string;
+      status: string;
+      exit_code: number | null;
+    }>;
     const proc = allRows[0];
     if (!proc) return;
 
-    // Poll the process status via the Sandbox SDK.
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sandboxNs = (this.env as any)?.SANDBOX_DO;
-      if (!sandboxNs) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandboxNs = (this.env as any)?.SANDBOX_DO;
+    if (!sandboxNs) {
+      console.error("[alarm] No SANDBOX_DO binding");
+      return;
+    }
 
+    try {
       const { getSandbox } = await import("@cloudflare/sandbox");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sandbox: any = getSandbox(sandboxNs, proc.sandbox_id);
-      const processInfo = await sandbox.getProcess(proc.process_id).catch(() => null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const p = processInfo as any;
 
-      if (p && (p.status === "exited" || p.status === "completed")) {
-        // Process finished — update the agent_process record.
-        this.ctx.storage.sql.exec(
-          "UPDATE agent_process SET status = 'finished', exit_code = ? WHERE process_id = ?",
-          p.exitCode ?? 0,
+      if (proc.status === "pending") {
+        // Phase 1: start the OpenCode process from within the DO alarm.
+        // This runs in the DO's execution context — no waitUntil cancellation.
+        console.log("[alarm] Starting OpenCode process in sandbox:", proc.sandbox_id);
+
+        // Read the command from the agent_process record.
+        const cmdRows = this.ctx.storage.sql.exec(
+          "SELECT command FROM agent_process WHERE process_id = ?",
           proc.process_id,
         );
+        const cmdRow = Array.from(cmdRows)[0] as { command: string } | undefined;
+        const command = cmdRow?.command ?? "echo 'no command'";
 
-        // Transition the session based on the result.
-        if (p.exitCode !== undefined && p.exitCode !== 0) {
-          await this.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
-        } else {
-          // Check current status — if still active (OpenCode didn't call
-          // forge.completePR), mark as no_change.
-          const current = await this.getStatus();
-          if (current.status === "active") {
-            await this.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
-          }
-        }
-        return; // Done — no more alarms.
+        const process = await sandbox.startProcess(command, { cwd: "/workspace" });
+        console.log("[alarm] OpenCode started:", process.id);
+
+        // Update the record with the actual process ID + running status.
+        this.ctx.storage.sql.exec(
+          "UPDATE agent_process SET status = 'running', process_id = ? WHERE process_id = ?",
+          process.id,
+          proc.process_id,
+        );
+        this.ctx.storage.setAlarm(Date.now() + 10_000);
+        return;
       }
 
-      // Process still running — set another alarm in 10s.
-      this.ctx.storage.setAlarm(Date.now() + 10_000);
-    } catch {
-      // If polling fails, set another alarm to retry.
-      this.ctx.storage.setAlarm(Date.now() + 10_000);
+      // Phase 2: poll the running process.
+      if (proc.status === "running") {
+        const processInfo = await sandbox.getProcess(proc.process_id).catch(() => null);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const p = processInfo as any;
+
+        if (p && (p.status === "exited" || p.status === "completed")) {
+          console.log("[alarm] OpenCode finished. exitCode:", p.exitCode);
+
+          this.ctx.storage.sql.exec(
+            "UPDATE agent_process SET status = 'finished', exit_code = ? WHERE process_id = ?",
+            p.exitCode ?? 0,
+            proc.process_id,
+          );
+
+          if (p.exitCode !== undefined && p.exitCode !== 0) {
+            await this.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+          } else {
+            const current = await this.getStatus();
+            if (current.status === "active") {
+              await this.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
+            }
+          }
+          return;
+        }
+
+        // Still running — set another alarm.
+        this.ctx.storage.setAlarm(Date.now() + 10_000);
+      }
+    } catch (err) {
+      console.error("[alarm] Error:", err instanceof Error ? err.message : String(err));
+      this.ctx.storage.setAlarm(Date.now() + 15_000);
     }
   }
 
-  /** Store the agent background process info (called by the agent loop). */
-  async setAgentProcess(input: { sandboxId: string; processId: string }): Promise<void> {
+  /** Store the agent execution info (called by the agent loop after provisioning). */
+  async setAgentProcess(input: { sandboxId: string; command: string }): Promise<void> {
     this.ensureMigrated();
     const meta = this.getMetaRow();
     if (!meta) return;
 
+    // Use a unique ID for this process record. The actual process ID gets
+    // filled in when the alarm starts the process.
+    const recordId = `agentproc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this.ctx.storage.sql.exec(
-      "INSERT OR REPLACE INTO agent_process (session_id, sandbox_id, process_id, status) VALUES (?, ?, ?, 'running')",
+      `INSERT OR REPLACE INTO agent_process (session_id, sandbox_id, process_id, status, command)
+       VALUES (?, ?, ?, 'pending', ?)`,
       meta.id,
       input.sandboxId,
-      input.processId,
+      recordId,
+      input.command,
     );
 
-    // Set the first alarm to check in 10s.
-    this.ctx.storage.setAlarm(Date.now() + 10_000);
+    // Set the first alarm to start the process in 2s.
+    this.ctx.storage.setAlarm(Date.now() + 2_000);
+    console.log("[agent] Agent process record stored, alarm set for", input.sandboxId);
   }
 
   /** A WS connection joined — send a state snapshot (docs/10 §4, §5.12). */

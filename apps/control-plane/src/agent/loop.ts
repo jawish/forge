@@ -31,7 +31,7 @@ interface AgentDOStub {
   completePR(c: { diffSummary: string; commitSha: string }): Promise<void>;
   getStatus(): Promise<{ status: SessionStatus; activity: SessionActivity | null }>;
   getRepoId(): Promise<{ repoId: string }>;
-  setAgentProcess(input: { sandboxId: string; processId: string }): Promise<void>;
+  setAgentProcess(input: { sandboxId: string; command: string }): Promise<void>;
 }
 
 /** A sandbox handle stored from provisioning (used for exec + verification). */
@@ -128,50 +128,19 @@ async function runOpenCodeInSandbox(
   try {
     const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
 
-    if (opts.sandbox.startBackground) {
-      // Start OpenCode as a background process (fire-and-forget).
-      // The DO alarm polls the process status every 10s until it finishes.
-      const process = await opts.sandbox.startBackground(
-        handle,
-        [
-          "opencode",
-          "run",
-          "--format",
-          "json",
-          "-m",
-          `${modelProvider}/${modelName}`,
-          `"${escapedPrompt}"`,
-        ],
-        { sessionId: opts.sessionId },
+    // Build the OpenCode command string. The DO alarm will execute this
+    // inside the sandbox (immune to waitUntil cancellation).
+    const command = `opencode run --format json -m ${modelProvider}/${modelName} "${escapedPrompt}"`;
+
+    // Store the command in the DO — the alarm will call sandbox.startProcess
+    // from within the DO's execution context (no waitUntil cancellation).
+    await doStub.setAgentProcess({ sandboxId, command }).catch((err) => {
+      console.error(
+        "[agent] setAgentProcess failed:",
+        err instanceof Error ? err.message : String(err),
       );
-      console.log("[agent] OpenCode started:", process.processId);
-      // Store process info so the DO alarm can poll it.
-      await doStub.setAgentProcess({ sandboxId, processId: process.processId }).catch(() => {});
-    } else {
-      // Fallback: blocking exec (tests / fast profile).
-      const result = await opts.sandbox.exec(
-        handle,
-        [
-          "opencode",
-          "run",
-          "--format",
-          "json",
-          "-m",
-          `${modelProvider}/${modelName}`,
-          `"${escapedPrompt}"`,
-        ],
-        { sessionId: opts.sessionId },
-      );
-      console.log("[agent] OpenCode exit:", result.exitCode);
-      if (result.exitCode !== 0) {
-        await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
-      } else {
-        const st = await doStub.getStatus();
-        if (st.status === "active") {
-          await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
-        }
-      }
-    }
+    });
+    console.log("[agent] Agent process queued for alarm-driven execution");
   } catch (err) {
     console.error("[agent] OpenCode failed:", err instanceof Error ? err.message : String(err));
     await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});

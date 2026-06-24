@@ -111,7 +111,8 @@ export const SESSION_DO_MIGRATION_STATEMENTS: readonly string[] = [
     session_id TEXT NOT NULL,
     sandbox_id TEXT NOT NULL,
     process_id TEXT NOT NULL PRIMARY KEY,
-    status TEXT NOT NULL DEFAULT 'running',
+    status TEXT NOT NULL DEFAULT 'pending',
+    command TEXT,
     exit_code INTEGER,
     created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
   )`,
