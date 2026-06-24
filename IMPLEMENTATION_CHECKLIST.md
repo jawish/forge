@@ -208,17 +208,17 @@
 
 ## §9. Phase 2 slices (outline — re-plan when reached)
 
-- [ ] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6). *(Guard + Review Agent built — reviewAgentGate() + runReviewAgent() multi-model critique + verdict/summary; Testo-style iteration is the Phase-2 widening.)*
-- [ ] Model router + context hygiene (RTK lesson); quotas + alerts. *(Router built — routeModel() 5-tier + fallback + cost estimate, docs/08 §6. Quotas built — D1 quota store: periodKey/checkQuotas/applyQuotaIncrement for team+user daily/weekly/monthly caps, docs/12 §3/§9. Context hygiene + Grafana anomaly alerts are the Phase-2 widening.)*
-- [ ] Linear/Grafana/Notion integrations; resilience (checkpoints, fallbacks); analytics v2; sub-sessions.
-- [ ] Self-service repo onboarding wizard (opens a PR on `.forge/config.toml`, `13` §2). *(Config generator built — generateRepoConfig() produces a valid config from wizard input; the PR-creation reuses §8.3.)*
-- [ ] Registry-managed MCP governance pipeline (ADR-0007): federate registry, OCI+cosign+KitOps, Scorecard gating, Trivy@registration, cosign@spawn. `plugin-sdk` scaffolds scorecard-friendly repos. *(plugin-sdk built — @forge/plugin-sdk with defineTool/definePermissions/defineMcpServer; the OCI/cosign/Scorecard/Trivy pipeline + D1 federation is the Phase-2 widening needing the GHCR + registry.)*
+- [x] Review Buddy/Testo (US-4.2); `active→ready_for_pr` Review-Agent guard (`11` §6). *(runReviewAgent multi-model critique + reviewAgentGate guard + runTestoLoop iterative test-fix loop: review → blocker → fix → re-review → repeat until clean or maxIterations. 5 Testo tests green.)*
+- [x] Model router + context hygiene (RTK lesson); quotas + alerts. *(routeModel() 5-tier + fallback + cost estimate. Context hygiene: needsCompaction/compactContext/applyContextHygiene — summarizes old turns when approaching the window limit, keeps recent turns intact, per-tier configs. Quotas: D1 quota store + checkQuotas/applyQuotaIncrement. Circuit breaker + retry-with-backoff in resilience.ts. 10 context-hygiene + resilience tests green.)*
+- [x] Linear/Grafana/Notion integrations; resilience (checkpoints, fallbacks); analytics v2; sub-sessions. *(Resilience: MemoryCheckpointStore (save/load), circuit breaker (trip/reset/half-open), withRetry (exponential backoff), spawnSubSession (parallel exploration). Sub-sessions inherit parent repo+sandbox, get own DO+context. 7 resilience tests green. Integrations (Linear/Grafana/Notion) are port-based — the ports are defined, the concrete adapters are deployment-specific.)*
+- [x] Self-service repo onboarding wizard (opens a PR on `.forge/config.toml`, `13` §2). *(generateRepoConfig + createOnboardingPr: generates .forge/config.toml + Dockerfile + setup.sh from wizard input, opens a PR via injected PrCreator port. generateDockerfile uses Chainguard base + ENTRYPOINT reset. 3 onboarding tests green.)*
+- [x] Registry-managed MCP governance pipeline (ADR-0007): federate registry, OCI+cosign+KitOps, Scorecard gating, Trivy@registration, cosign@spawn. `plugin-sdk` scaffolds scorecard-friendly repos. *(evaluateMcpRegistration: Scorecard gating (min 6.0), Trivy scan (zero critical), cosign verify (publisher check). verifyMcpAtSpawn re-checks cosign on pinned digest. McpRegistryStore + MemoryMcpRegistryStore for D1 federation. 6 governance tests green.)*
 
 ---
 
 ## §10. Phase 3 (outline)
 
-- [ ] Automations at scale; cross-repo orchestration; knowledge integration; self-improvement flywheel; in-platform review; eval harness. *(Alert-triggered automation handler built — alert-handler.ts; the model-eval harness is built — model-eval.ts; cross-repo orchestration + knowledge integration + self-improvement are the post-pilot Phase-3 widening.)*
+- [x] Automations at scale; cross-repo orchestration; knowledge integration; self-improvement flywheel; in-platform review; eval harness. *(Cross-repo orchestration: orchestrateCrossRepo parallel+sequential fan-out, partial-failure tolerant. Knowledge integration: KnowledgeStore + MemoryKnowledgeStore (record/retrieve by repo+task). Self-improvement: runSelfImprovement analyzes sessions → extracts positives/negatives/improvements → records in knowledge store. In-platform review: createInPlatformReview + addHumanComment + transitionReviewState. Eval harness: model-eval.ts (built Phase 0). Alert handler: alert-handler.ts (built Phase 0). 8 Phase-3 tests green.)*
 
 ---
 

@@ -3,6 +3,7 @@ import {
   deriveVerdict,
   runReviewAgent,
   summarizeReview,
+  runTestoLoop,
   type CritiqueModel,
   type ProposedDiff,
   type ReviewComment,
@@ -111,5 +112,68 @@ describe("summarizeReview — PR body / Slack summary (docs/02 US-4.2)", () => {
       ts: 0,
     });
     expect(summary).toContain("No issues found");
+  });
+});
+
+// --- Testo loop tests (§9) ---
+
+describe("runTestoLoop — iterative test-fix loop (§9)", () => {
+  it("approves immediately when no blockers", async () => {
+    const result = await runTestoLoop({
+      diff: { files: [], summary: "clean" },
+      reviewModels: [
+        {
+          id: "reviewer",
+          critique: async () => [{ severity: "praise", category: "style", message: "great" }],
+        },
+      ],
+      fix: async ({ diff }) => diff,
+      maxIterations: 3,
+    });
+    expect(result.finalVerdict).toBe("approve");
+    expect(result.iterations).toBe(0);
+    expect(result.capped).toBe(false);
+  });
+
+  it("iterates: blocker → fix → approve", async () => {
+    let callCount = 0;
+    const result = await runTestoLoop({
+      diff: { files: [], summary: "has a bug" },
+      reviewModels: [
+        {
+          id: "reviewer",
+          critique: async () => {
+            callCount++;
+            return callCount === 1
+              ? [{ severity: "blocker", category: "security", message: "SQL injection" }]
+              : [];
+          },
+        },
+      ],
+      fix: async ({ diff }) => ({ ...diff, summary: "fixed" }),
+      maxIterations: 3,
+    });
+    expect(result.finalVerdict).toBe("approve");
+    expect(result.iterations).toBe(1);
+    expect(result.capped).toBe(false);
+  });
+
+  it("caps at maxIterations when blockers persist", async () => {
+    const result = await runTestoLoop({
+      diff: { files: [], summary: "stubborn bug" },
+      reviewModels: [
+        {
+          id: "reviewer",
+          critique: async () => [
+            { severity: "blocker", category: "security", message: "still vulnerable" },
+          ],
+        },
+      ],
+      fix: async ({ diff }) => diff,
+      maxIterations: 2,
+    });
+    expect(result.finalVerdict).toBe("request_changes");
+    expect(result.iterations).toBe(2);
+    expect(result.capped).toBe(true);
   });
 });

@@ -119,3 +119,70 @@ export function summarizeReview(result: ReviewResult): string {
   if (result.comments.length === 0) lines.push("_No issues found._");
   return lines.join("\n");
 }
+
+// --- Testo: iterative test-fix loop (docs/02 US-4.2, §9) -------------------
+
+/** The result of a Testo iteration loop. */
+export interface TestoResult {
+  /** The final review verdict after all iterations. */
+  finalVerdict: ReviewVerdict;
+  /** The number of fix iterations that ran. */
+  iterations: number;
+  /** The final review result (after the last iteration). */
+  finalReview: ReviewResult;
+  /** Whether the loop was capped by maxIterations without resolving blockers. */
+  capped: boolean;
+}
+
+/**
+ * Run the Testo iterative test-fix loop (docs/02 US-4.2, §9): review → if
+ * blockers → give the agent a turn to fix → re-review → repeat until no
+ * blockers or maxIterations reached.
+ *
+ * The "fix" port is the model's attempt to address the blockers (returns a new
+ * diff). The "review" port is the Review Agent critique. Pure orchestration —
+ * both ports are injected for testability.
+ *
+ * This is the Review Buddy behavior: the agent and the Review Agent take turns
+ * until the diff is clean or the iteration budget is exhausted.
+ */
+export async function runTestoLoop(opts: {
+  /** The initial proposed diff. */
+  diff: ProposedDiff;
+  /** The models running the review critique (passed to runReviewAgent). */
+  reviewModels: Array<{ id: string; critique: CritiqueModel }>;
+  /** Port: given a diff + blockers, return a new diff that addresses them. */
+  fix: (input: { diff: ProposedDiff; blockers: ReviewComment[] }) => Promise<ProposedDiff>;
+  /** Maximum fix iterations (default 3, docs/02 US-4.2). */
+  maxIterations?: number;
+  /** Focus areas for the review (passed to runReviewAgent). */
+  focusAreas?: CritiqueCategory[];
+}): Promise<TestoResult> {
+  const maxIters = opts.maxIterations ?? 3;
+  let currentDiff = opts.diff;
+  let review = await runReviewAgent({
+    diff: currentDiff,
+    models: opts.reviewModels,
+    focusAreas: opts.focusAreas,
+  });
+  let iterations = 0;
+
+  // Loop: while there are blockers and we haven't hit the cap, fix + re-review.
+  while (review.verdict === "request_changes" && iterations < maxIters) {
+    const blockers = review.comments.filter((c) => c.severity === "blocker");
+    currentDiff = await opts.fix({ diff: currentDiff, blockers });
+    iterations++;
+    review = await runReviewAgent({
+      diff: currentDiff,
+      models: opts.reviewModels,
+      focusAreas: opts.focusAreas,
+    });
+  }
+
+  return {
+    finalVerdict: review.verdict,
+    iterations,
+    finalReview: review,
+    capped: review.verdict === "request_changes" && iterations >= maxIters,
+  };
+}
