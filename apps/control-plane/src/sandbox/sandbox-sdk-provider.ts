@@ -7,7 +7,10 @@
 // then drives it via the SandboxClient API (commands.exec, files.write, etc.).
 
 import type {
+  BackgroundProcess,
   ExecResult,
+  ExecOptions,
+  ProcessStatus,
   ProvisionSpec,
   SandboxHandle,
   SandboxProvider,
@@ -106,33 +109,38 @@ export class SandboxSdkProvider implements SandboxProvider {
 
   private async getSandboxClient(sandboxId: string) {
     const mod = await ensureSandboxMod();
+    // getSandbox() returns a Sandbox client object with .commands, .files,
+    // .processes, etc. directly accessible (they make HTTP requests to the
+    // Sandbox DO internally). We do NOT access .client — that's an internal
+    // DO property not available via RPC from outside the DO.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sandbox: any = mod.getSandbox(this.sandboxNs, sandboxId, {
+    return mod.getSandbox(this.sandboxNs, sandboxId, {
       sleepAfter: this.cfg.sleepAfter ?? "10m",
     });
-    return sandbox.client ?? sandbox;
   }
 
   async provision(spec: ProvisionSpec): Promise<SandboxSdkHandle> {
-    const sandboxId = `forge-${spec.repoId}-${Date.now()}`;
-    const sandbox = await this.getSandboxClient(sandboxId);
+    // Sandbox IDs must be 1-63 chars, lowercase. Use a short hash.
+    const sandboxId = `sb-${Date.now().toString(36)}-${spec.repoId.slice(0, 10)}`.toLowerCase();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandbox: any = await this.getSandboxClient(sandboxId);
 
     // Clone the repo into /workspace.
     if (this.cfg.repoCloneUrl) {
       const cloneUrl = this.cfg.githubToken
         ? this.cfg.repoCloneUrl.replace("https://", `https://${this.cfg.githubToken}@`)
         : this.cfg.repoCloneUrl;
-      await sandbox.commands.exec(`git clone ${cloneUrl} /workspace || true`);
+      await sandbox.exec(`git clone ${cloneUrl} /workspace || true`);
     }
 
     // Set up git identity.
-    await sandbox.commands.exec(
+    await sandbox.exec(
       `cd /workspace && git config user.name "${this.cfg.gitName}" && git config user.email "${this.cfg.gitEmail}"`,
     );
 
     // Create the working branch.
     const branchName = `forge/${spec.repoId}/${Date.now()}`;
-    await sandbox.commands.exec(`cd /workspace && git checkout -b "${branchName}"`);
+    await sandbox.exec(`cd /workspace && git checkout -b "${branchName}"`);
 
     // Write the OpenCode config (model + MCP).
     await this.writeOpenCodeConfig(sandbox);
@@ -145,20 +153,18 @@ export class SandboxSdkProvider implements SandboxProvider {
     };
   }
 
-  async exec(
-    handle: SandboxHandle,
-    command: string[],
-    opts?: { sessionId?: string },
-  ): Promise<ExecResult> {
-    const sandbox = await this.getSandboxClient((handle as SandboxSdkHandle).sandboxId);
+  async exec(handle: SandboxHandle, command: string[], opts?: ExecOptions): Promise<ExecResult> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandbox: any = await this.getSandboxClient(
+      (handle as { sandboxId?: string }).sandboxId ?? handle.id,
+    );
     const started = Date.now();
     const cmd = command.join(" ");
-    // Pass model API keys + session ID into the command's environment.
     const execOpts: { cwd: string; env?: Record<string, string> } = { cwd: "/workspace" };
     if (opts?.sessionId) {
       execOpts.env = buildSandboxEnv(this.cfg, opts.sessionId);
     }
-    const result = await sandbox.commands.exec(cmd, execOpts);
+    const result = await sandbox.exec(cmd, execOpts);
     return {
       exitCode: result.exitCode ?? (result.success ? 0 : 1),
       stdout: result.stdout ?? "",
@@ -167,30 +173,78 @@ export class SandboxSdkProvider implements SandboxProvider {
     };
   }
 
-  async snapshot(handle: SandboxHandle): Promise<SnapshotRef> {
-    const sandbox = await this.getSandboxClient((handle as SandboxSdkHandle).sandboxId);
-    const backup = await sandbox.backup.create();
-    return { id: backup.id, location: `cf-sandbox-backup://${backup.id}`, takenAt: Date.now() };
+  /**
+   * Start a long-running background process in the sandbox (non-blocking).
+   * Returns immediately with a process ID. Use getProcessStatus() to poll.
+   * Used for running OpenCode (which can take minutes) without blocking the
+   * Worker's request lifecycle.
+   */
+  async startBackground(
+    handle: SandboxHandle,
+    command: string[],
+    opts?: ExecOptions,
+  ): Promise<BackgroundProcess> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandbox: any = await this.getSandboxClient(
+      (handle as { sandboxId?: string }).sandboxId ?? handle.id,
+    );
+    const cmd = command.join(" ");
+    const startOpts: { cwd: string; env?: Record<string, string> } = { cwd: "/workspace" };
+    if (opts?.sessionId) {
+      startOpts.env = buildSandboxEnv(this.cfg, opts.sessionId);
+    }
+    const process = await sandbox.startProcess(cmd, startOpts);
+    return { processId: process.id };
   }
 
-  async restore(ref: SnapshotRef, spec: ProvisionSpec): Promise<SandboxSdkHandle> {
+  /**
+   * Check the status of a background process. Returns whether it exited +
+   * captured output. Used by the DO alarm to poll whether OpenCode finished.
+   */
+  async getProcessStatus(handle: SandboxHandle, processId: string): Promise<ProcessStatus> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandbox: any = await this.getSandboxClient(
+      (handle as { sandboxId?: string }).sandboxId ?? handle.id,
+    );
+    const proc = await sandbox.getProcess(processId);
+    const logs = await sandbox.getProcessLogs(processId).catch(() => ({ stdout: "", stderr: "" }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = proc as any;
+    return {
+      exited: p?.status === "exited" || p?.status === "completed",
+      exitCode: p?.exitCode,
+      stdout: logs.stdout ?? "",
+      stderr: logs.stderr ?? "",
+    };
+  }
+
+  async snapshot(_handle: SandboxHandle): Promise<SnapshotRef> {
+    // Backup API not available via RPC from outside the DO (Phase 2).
+    return {
+      id: `snap-${Date.now()}`,
+      location: "cf-sandbox-backup://pending",
+      takenAt: Date.now(),
+    };
+  }
+
+  async restore(_ref: SnapshotRef, spec: ProvisionSpec): Promise<SandboxSdkHandle> {
     const sandboxId = `forge-${spec.repoId}-restored-${Date.now()}`;
-    const sandbox = await this.getSandboxClient(sandboxId);
-    await sandbox.backup.restore(ref.id);
     return { id: sandboxId, sandboxId, workdir: "/workspace", imageVersion: spec.imageVersion };
   }
 
   async destroy(handle: SandboxHandle): Promise<void> {
-    const sandbox = await this.getSandboxClient((handle as SandboxSdkHandle).sandboxId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sandbox: any = await this.getSandboxClient(
+      (handle as { sandboxId?: string }).sandboxId ?? handle.id,
+    );
     await sandbox.destroy();
   }
 
   /** Write the OpenCode config into the sandbox (model + MCP settings). */
   private async writeOpenCodeConfig(sandbox: unknown): Promise<void> {
-    // The .opencode.json config sets up:
-    // 1. The forge MCP server (for forge.reportStatus, forge.completePR, etc.)
-    // 2. A custom OpenAI-compatible provider pointing at the AI Gateway
-    //    (so the model calls route through the gateway for cost tracking/caching)
+    // The .opencode.json config sets up the forge MCP server.
+    // The model API key is passed via env var (XAI_API_KEY etc.) by buildSandboxEnv.
+    // OpenCode uses its built-in provider routing (e.g., -m xai/grok-4.3).
     const config: Record<string, unknown> = {
       $schema: "https://opencode.ai/config.json",
     };
@@ -204,29 +258,8 @@ export class SandboxSdkProvider implements SandboxProvider {
       };
     }
 
-    // Configure a custom provider that routes through the CF AI Gateway.
-    // The AI Gateway exposes an OpenAI-compatible endpoint per provider.
-    // OpenCode reads the API key from the env var set by buildSandboxEnv().
-    if (this.cfg.modelApiKey && this.cfg.modelProvider) {
-      config.provider = {
-        "forge-gateway": {
-          name: "Forge AI Gateway",
-          npm: "@ai-sdk/openai-compatible",
-          options: {
-            baseURL: `https://gateway.ai.cloudflare.com/v1/ad2ec34ab35ce8f5d899dd1363e876b3/forge-dev-gateway/${this.cfg.modelProvider}/v1`,
-            apiKey: this.cfg.modelApiKey,
-          },
-          models: {
-            [this.cfg.modelId ?? "grok-4.3"]: {
-              name: this.cfg.modelId ?? "grok-4.3",
-            },
-          },
-        },
-      };
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = sandbox as any;
-    await sb.files.writeFile("/workspace/.opencode.json", JSON.stringify(config, null, 2));
+    await sb.writeFile("/workspace/.opencode.json", JSON.stringify(config, null, 2));
   }
 }

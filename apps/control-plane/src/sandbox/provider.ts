@@ -49,6 +49,24 @@ export interface ExecOptions {
   sessionId?: string;
 }
 
+/** A background process started in the sandbox. */
+export interface BackgroundProcess {
+  /** The process ID in the sandbox. */
+  processId: string;
+}
+
+/** Result of checking a background process status. */
+export interface ProcessStatus {
+  /** Whether the process has exited. */
+  exited: boolean;
+  /** The exit code (undefined if still running). */
+  exitCode?: number;
+  /** Captured stdout (may be partial if still running). */
+  stdout: string;
+  /** Captured stderr (may be partial if still running). */
+  stderr: string;
+}
+
 /**
  * The sandbox provider interface. All methods are async (network for CF Sandbox,
  * subprocess for Local). Implementations MUST enforce the egress allowlist
@@ -59,6 +77,14 @@ export interface SandboxProvider {
   provision(spec: ProvisionSpec): Promise<SandboxHandle>;
   /** Run a command in the sandbox (subject to the egress allowlist). */
   exec(handle: SandboxHandle, command: string[], opts?: ExecOptions): Promise<ExecResult>;
+  /** Start a long-running background process (non-blocking). Returns immediately. */
+  startBackground?(
+    handle: SandboxHandle,
+    command: string[],
+    opts?: ExecOptions,
+  ): Promise<BackgroundProcess>;
+  /** Check the status of a background process. */
+  getProcessStatus?(handle: SandboxHandle, processId: string): Promise<ProcessStatus>;
   /** Capture a filesystem snapshot (warm-pool / restore). */
   snapshot(handle: SandboxHandle): Promise<SnapshotRef>;
   /** Restore a sandbox from a snapshot (copy-on-write overlay). */

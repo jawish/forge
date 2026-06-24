@@ -38,6 +38,8 @@ interface SandboxHandleLite {
   id: string;
   workdir: string;
   imageVersion: string;
+  /** The CF Sandbox SDK sandbox ID (for re-acquiring the sandbox client). */
+  sandboxId?: string;
 }
 
 /**
@@ -68,16 +70,32 @@ export async function runAgentTurn(opts: {
   let sandboxHandle: SandboxHandleLite | null = null;
   try {
     const { repoId } = await doStub.getRepoId();
+    console.log("[agent] Provisioning sandbox for repo:", repoId);
     const handle = await opts.sandbox.provision({
       repoId,
       imageVersion: "latest",
       gitIdentity: { name: "forge-agent", email: "forge@noreply.example.com" },
     });
-    sandboxHandle = { id: handle.id, workdir: handle.workdir, imageVersion: handle.imageVersion };
-  } catch {
-    // No sandbox available — fall through to direct model stream mode.
+    sandboxHandle = {
+      id: handle.id,
+      workdir: handle.workdir,
+      imageVersion: handle.imageVersion,
+      sandboxId: (handle as { sandboxId?: string }).sandboxId ?? handle.id,
+    };
+    console.log("[agent] Sandbox provisioned:", handle.id);
+  } catch (err) {
+    console.error(
+      "[agent] Sandbox provisioning failed:",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
+  console.log(
+    "[agent] sandboxHandle:",
+    sandboxHandle ? "yes" : "no",
+    "SANDBOX_DO:",
+    opts.env.SANDBOX_DO ? "yes" : "no",
+  );
   if (sandboxHandle && opts.env.SANDBOX_DO) {
     // Real mode: run OpenCode in the sandbox.
     return runOpenCodeInSandbox(opts, doStub, sandboxHandle);
@@ -88,10 +106,12 @@ export async function runAgentTurn(opts: {
 }
 
 /**
- * Real mode: run OpenCode as a subprocess inside the CF Sandbox.
- * Uses `sandbox.exec(handle, command)` to run OpenCode non-interactively.
- * The forge.* tools are available via the MCP server (configured in .opencode.json).
- * OpenCode makes MCP tool calls back to /api/mcp, which transitions the DO.
+ * Real mode: run OpenCode as a background process inside the CF Sandbox.
+ * Uses startBackground (non-blocking) so the Worker doesn't hit the request
+ * timeout. The DO alarm polls the process status.
+ *
+ * OpenCode calls forge.* MCP tools back to the Worker's /api/mcp endpoint
+ * as it works. These arrive as separate HTTP requests and transition the DO.
  */
 async function runOpenCodeInSandbox(
   opts: { sessionId: string; prompt: string; sandbox: SandboxProvider; env: Env },
@@ -99,43 +119,53 @@ async function runOpenCodeInSandbox(
   handle: SandboxHandleLite,
 ): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
-  // Use the custom "forge-gateway" provider (configured in .opencode.json to
-  // route through the AI Gateway) instead of the native provider prefix.
-  const modelFlag = `forge-gateway/${modelName}`;
+  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
 
   await doStub.reportStatus({ activity: "running", summary: "OpenCode booting" }).catch(() => {});
 
+  // Use the blocking exec approach — the startBackground + poll pattern fails
+  // because waitUntil cancels the in-flight RPC before startProcess completes.
+  // The Workers paid plan allows up to 5 min wall-clock with waitUntil, which
+  // is enough for OpenCode to boot, call the model, and return a result.
+  return runOpenCodeBlocking(opts, doStub, handle);
+}
+
+/** Blocking fallback — used when the provider doesn't support background processes. */
+async function runOpenCodeBlocking(
+  opts: { sessionId: string; prompt: string; sandbox: SandboxProvider; env: Env },
+  doStub: AgentDOStub,
+  handle: SandboxHandleLite,
+): Promise<{ finalStatus: SessionStatus }> {
+  const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
+  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
+
   try {
-    // Run OpenCode non-interactively with JSON output. The forge.* tools are
-    // available via the MCP server (configured in .opencode.json written at
-    // provision time). OpenCode calls them via JSON-RPC to /api/mcp.
-    //
-    // The prompt is passed as an argument; OpenCode handles the edit-test loop
-    // internally. We capture the exit code + output.
     const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
     const result = await opts.sandbox.exec(
       handle,
-      ["opencode", "run", "--format", "json", "-m", modelFlag, escapedPrompt],
+      [
+        "opencode",
+        "run",
+        "--format",
+        "json",
+        "-m",
+        `${modelProvider}/${modelName}`,
+        `"${escapedPrompt}"`,
+      ],
       { sessionId: opts.sessionId },
     );
-
-    // If OpenCode finished but didn't call forge.completePR (the session is
-    // still active/running), mark as no_change.
-    if (result.exitCode === 0) {
+    console.log("[agent] OpenCode exit code:", result.exitCode);
+    if (result.exitCode !== 0) {
+      console.error("[agent] OpenCode stderr:", result.stderr.slice(0, 300));
+      await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+    } else {
       const status = await doStub.getStatus();
       if (status.status === "active") {
         await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
       }
-    } else {
-      // Non-zero exit — the agent errored.
-      console.error("[agent] OpenCode exit", result.exitCode, result.stderr.slice(0, 200));
-      await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
     }
   } catch (err) {
-    console.error(
-      "[agent] OpenCode execution failed:",
-      err instanceof Error ? err.message : String(err),
-    );
+    console.error("[agent] OpenCode failed:", err instanceof Error ? err.message : String(err));
     await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
   }
 
