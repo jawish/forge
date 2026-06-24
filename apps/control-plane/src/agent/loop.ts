@@ -107,17 +107,18 @@ export async function runAgentTurn(opts: {
 }
 
 /**
- * Direct agent loop — runs the model via AI Gateway and executes commands in
- * the sandbox via exec(). This is a real coding agent without the OpenCode
- * subprocess dependency:
+ * Direct agent loop — a real multi-turn coding agent.
  *
- * 1. Call the model with the prompt + system message describing available tools
- * 2. Parse the model's response for file write commands
- * 3. Execute writes via sandbox.exec("echo '...' > file")
- * 4. Run any test/build commands
- * 5. Call forge.completePR via the DO when done
+ * The loop works in iterations:
+ * 1. Send the task + conversation history to the model
+ * 2. Parse the model's response for commands (RUN:) or completion (DONE:)
+ * 3. Execute each command in the sandbox via exec()
+ * 4. Feed the command output back into the conversation
+ * 5. Repeat until DONE: or max iterations
+ * 6. Commit, push, and create a GitHub PR
  *
- * All real — no mocks. The sandbox is a real CF Container with the repo cloned.
+ * This is a real ReAct-style agent loop — no mocks. The sandbox is a real
+ * CF Container. The model is real Grok-4.3 via AI Gateway.
  */
 async function runDirectAgentLoop(
   opts: {
@@ -131,50 +132,82 @@ async function runDirectAgentLoop(
   handle: SandboxHandleLite,
 ): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
-  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
+  const maxIterations = 5;
 
   await doStub.reportStatus({ activity: "running", summary: "Agent thinking" }).catch(() => {});
 
-  try {
-    // Build a system prompt that instructs the model to respond with specific
-    // tool-call format that we can parse and execute in the sandbox.
-    const systemPrompt = `You are a coding agent working inside a repository at /workspace.
-You have access to a bash shell. Respond with bash commands to accomplish the task.
-Each command should be on its own line prefixed with "RUN:".
-When you are done, respond with "DONE:" followed by a summary of what you changed.
-Keep your response concise — just the commands and the DONE line.`;
+  const systemPrompt = `You are an autonomous coding agent working in a git repository at /workspace.
+You interact with the codebase by issuing bash commands.
 
-    // Call the model via the AI Gateway.
-    console.log("[agent] Calling model:", `${modelProvider}/${modelName}`);
-    let modelResponse = "";
-    for await (const event of opts.model.stream({
-      prompt: `${systemPrompt}\n\nTask: ${opts.prompt}`,
-      model: modelName,
-    })) {
-      if (event.type === "thinking_delta") {
-        modelResponse += event.text;
-      } else if (event.type === "finish") {
+FORMAT: Each turn, respond with ONE OR MORE commands prefixed with "RUN:" (one per line).
+After commands, you'll see their output. Then decide the next step.
+When the task is complete and tests pass, respond with "DONE:" followed by a one-line summary.
+
+CAPABILITIES: You can read files (cat, head, grep), edit files (using sed, echo, or python scripts),
+run tests (pytest, npm test, etc.), and inspect the repo (git status, git log).
+
+STRATEGY: First explore the codebase, understand the task, make changes, run tests, and fix any failures.
+Be thorough — verify your changes work before saying DONE.`;
+
+  // Conversation history (accumulated across turns).
+  const conversation: Array<{ role: string; content: string }> = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: `Task: ${opts.prompt}` },
+  ];
+
+  try {
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      console.log(`[agent] Iteration ${iteration + 1}/${maxIterations}`);
+
+      // Build the prompt from conversation history.
+      const prompt = conversation.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
+
+      // Call the model.
+      let modelResponse = "";
+      for await (const event of opts.model.stream({ prompt, model: modelName })) {
+        if (event.type === "thinking_delta") {
+          modelResponse += event.text;
+        } else if (event.type === "finish") {
+          break;
+        }
+      }
+
+      console.log(`[agent] Turn ${iteration + 1} response:`, modelResponse.slice(0, 300));
+      conversation.push({ role: "assistant", content: modelResponse });
+
+      // Check for DONE.
+      if (modelResponse.includes("DONE:")) {
+        console.log("[agent] Agent signaled DONE");
         break;
       }
+
+      // Parse and execute RUN: commands.
+      const commands = modelResponse
+        .split("\n")
+        .filter((line) => line.trim().startsWith("RUN:"))
+        .map((line) => line.trim().slice(4).trim());
+
+      if (commands.length === 0) {
+        console.log("[agent] No RUN: commands, ending loop");
+        break;
+      }
+
+      // Execute each command and collect output for the next turn.
+      const outputs: string[] = [];
+      for (const cmd of commands) {
+        console.log("[agent] Exec:", cmd.slice(0, 100));
+        const result = await opts.sandbox.exec(handle, [cmd], { sessionId: opts.sessionId });
+        const output = result.exitCode === 0 ? result.stdout : result.stderr;
+        const truncated = (output || "(no output)").slice(0, 1000);
+        outputs.push(`$ ${cmd}\n${truncated}\n(exit: ${result.exitCode})`);
+        console.log("[agent] Exit:", result.exitCode, "out:", truncated.slice(0, 100));
+      }
+
+      // Feed the output back into the conversation.
+      conversation.push({ role: "user", content: outputs.join("\n\n") });
     }
 
-    console.log("[agent] Model response (first 500):", modelResponse.slice(0, 500));
-
-    // Parse the model's response for RUN: commands.
-    const commands = modelResponse
-      .split("\n")
-      .filter((line) => line.trim().startsWith("RUN:"))
-      .map((line) => line.trim().slice(4).trim());
-
-    console.log("[agent] Parsed", commands.length, "commands from model response");
-
-    // Execute each command in the sandbox.
-    for (const cmd of commands) {
-      console.log("[agent] Executing:", cmd.slice(0, 100));
-      await opts.sandbox.exec(handle, [cmd], { sessionId: opts.sessionId });
-    }
-
-    // Stage + commit all changes immediately (before waitUntil might cancel).
+    // Commit all changes.
     const commitMsg = opts.prompt.slice(0, 50).replace(/'/g, "");
     const commitResult = await opts.sandbox.exec(
       handle,
@@ -183,7 +216,18 @@ Keep your response concise — just the commands and the DONE line.`;
     );
     console.log("[agent] Commit exit:", commitResult.exitCode);
 
-    // Get the diff summary for the PR body.
+    // Push to GitHub if we have a token.
+    if (opts.env.GITHUB_TOKEN && opts.env.GITHUB_REPO_URL) {
+      console.log("[agent] Pushing to GitHub...");
+      const pushResult = await opts.sandbox.exec(
+        handle,
+        ["cd /workspace && git push origin HEAD 2>&1"],
+        { sessionId: opts.sessionId },
+      );
+      console.log("[agent] Push exit:", pushResult.exitCode, pushResult.stdout.slice(0, 200));
+    }
+
+    // Get the diff summary.
     const diffResult = await opts.sandbox.exec(
       handle,
       ["cd /workspace && git diff HEAD~1 --stat"],
@@ -191,13 +235,13 @@ Keep your response concise — just the commands and the DONE line.`;
     ).catch(() => ({ exitCode: 1, stdout: "changes committed", stderr: "", durationMs: 0 }));
     const diffSummary = diffResult.stdout.slice(0, 500) || "changes committed";
 
-    // Signal completion — this transitions to ready_for_pr.
+    // Signal completion.
     await doStub.completePR({ diffSummary, commitSha: "auto" }).catch((err) => {
       console.error("[agent] completePR failed:", err instanceof Error ? err.message : String(err));
     });
     console.log("[agent] completePR called → ready_for_pr");
   } catch (err) {
-    console.error("[agent] Direct loop failed:", err instanceof Error ? err.message : String(err));
+    console.error("[agent] Loop failed:", err instanceof Error ? err.message : String(err));
     await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
   }
 
