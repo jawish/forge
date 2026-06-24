@@ -21,6 +21,12 @@ export function SessionLiveScreen({
   const wsRef = useRef<WebSocket | null>(null);
 
   const submitPrompt = trpc.prompt.submit.useMutation();
+  const cancel = trpc.session.cancel.useMutation({
+    onSuccess: () => {
+      setStatus("cancelled");
+      setLog((l) => [...l, "[system] session cancelled"]);
+    },
+  });
 
   // Open the WS and consume the typed event stream (docs/10 §4).
   useEffect(() => {
@@ -87,6 +93,23 @@ export function SessionLiveScreen({
           >
             📝 code-server
           </a>
+          <button
+            onClick={() => {
+              cancel.mutate({ sessionId });
+            }}
+            disabled={cancel.isPending || status === "cancelled" || status === "failed"}
+            style={{
+              padding: "4px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              color: "#dc2626",
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+            title="Cancel this session"
+          >
+            {cancel.isPending ? "Cancelling…" : "✕ Cancel"}
+          </button>
           <button onClick={onBack}>← Back</button>
         </div>
       </div>

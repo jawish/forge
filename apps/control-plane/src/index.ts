@@ -43,6 +43,15 @@ export default {
     });
 
     try {
+      // --- CORS preflight (cross-origin web app → worker) -------------------
+      // The web app (forge-web-dev.pages.dev) and the control-plane worker are
+      // on different origins in the deployed dev environment. The browser sends
+      // an OPTIONS preflight before any cross-origin POST/GET with content-type
+      // JSON. Short-circuit with 204 + CORS headers.
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders() });
+      }
+
       // --- Seam 6: ops/debugging (docs/10 §7) ------------------------------
       if (url.pathname === "/api/ops/health") {
         // Health reports profile + provider names without instantiating the
@@ -168,12 +177,14 @@ export default {
       // /api/* (except /api/ops/* which is seam 6 above) routes to tRPC v11.
       if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/ops/")) {
         span.setAttribute("http.status", 200);
-        return fetchRequestHandler({
+        const trpcResponse = await fetchRequestHandler({
           endpoint: "/api",
           req: request,
           router: appRouter,
           createContext: (opts) => createContext({ req: opts.req, env }),
         });
+        // Attach CORS headers to the tRPC response so cross-origin web requests work.
+        return addCorsHeaders(trpcResponse);
       }
 
       // --- code-server deep-link (§8.2) ------------------------------------
@@ -214,9 +225,27 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
+/** CORS headers for cross-origin web app access (web on Pages, API on Workers). */
+function corsHeaders(): Record<string, string> {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "content-type,trpc-accept,content-type,trpc-batch-mode",
+  };
+}
+
+/** Attach CORS headers to an existing Response (clone + add headers). */
+function addCorsHeaders(res: Response): Response {
+  const newRes = new Response(res.body, res);
+  for (const [k, v] of Object.entries(corsHeaders())) {
+    newRes.headers.set(k, v);
+  }
+  return newRes;
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...corsHeaders() },
   });
 }

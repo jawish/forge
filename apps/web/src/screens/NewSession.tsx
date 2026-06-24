@@ -1,5 +1,5 @@
 // New-session screen (§5.26 screen 2): repo + prompt form. Calls session.create
-// via the tRPC client (typed by the control-plane AppRouter).
+// then prompt.submit via the tRPC client (typed by the control-plane AppRouter).
 
 import { useState } from "react";
 import { trpc } from "../lib/trpc";
@@ -9,8 +9,22 @@ export function NewSessionScreen({ onCreated }: { onCreated: (sessionId: string)
   const [branch, setBranch] = useState("forge/web/new-session");
   const [prompt, setPrompt] = useState("fix the typo in the README");
 
+  // prompt.submit — auto-submitted after the session is created so the agent
+  // turn actually starts (the prompt drives the model stream → DO transitions).
+  const submitPrompt = trpc.prompt.submit.useMutation();
+
   const create = trpc.session.create.useMutation({
-    onSuccess: (data) => onCreated(data.sessionId),
+    onSuccess: (data) => {
+      // Auto-submit the prompt to kick off the agent turn.
+      if (prompt.trim()) {
+        submitPrompt.mutate({
+          sessionId: data.sessionId,
+          userId: "user_web",
+          content: prompt,
+        });
+      }
+      onCreated(data.sessionId);
+    },
   });
 
   return (
@@ -42,7 +56,7 @@ export function NewSessionScreen({ onCreated }: { onCreated: (sessionId: string)
       </button>
       {create.error && <p style={{ color: "#c00" }}>Error: {create.error.message}</p>}
       <p style={{ color: "#888", fontSize: 13 }}>
-        Submitting creates a queued session; the live-stream view opens next.
+        Submitting creates a queued session + starts the agent; the live-stream view opens next.
       </p>
     </section>
   );
