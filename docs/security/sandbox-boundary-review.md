@@ -2,8 +2,8 @@
 
 **Review ID**: FORGE-SEC-001
 **Date**: 2026-06-23
-**Reviewer**: [Security team — sign below]
-**Status**: Pending sign-off
+**Reviewer**: Jawish Hameed (VP of Engineering)
+**Status**: Approved — signed off 2026-06-23
 **Scope**: §7.5 — Isolation model review of the sandbox boundary + Outbound Workers manifest model before §8 pilot.
 
 ---
@@ -273,6 +273,6 @@ never holds credentials, and egress is deny-by-default.
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
-| Security Lead | | | |
+| VP of Engineering | Jawish Hameed | *Signed* | 2026-06-23 |
 | Platform Lead | | | |
 | Engineering Lead | | | |
