@@ -47,8 +47,8 @@ describe("seam 3 — WS gateway /ws/:sessionId (§5.11–5.14)", () => {
     // Drive the DO directly via RPC: spawn, then transition; assert the broadcast
     // helper exists (the WS event stream is wired in onConnect/onMessage).
     const id = `ws_do_${Date.now()}`;
-    const idObj = env.SESSION_DO.idFromName(id);
-    const stub = env.SESSION_DO.get(idObj) as unknown as {
+    const idObj = env.sessionDo.idFromName(id);
+    const stub = env.sessionDo.get(idObj) as unknown as {
       spawn(i: {
         repoId: string;
         branch: string;

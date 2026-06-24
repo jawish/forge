@@ -9,7 +9,7 @@ import { cloudflarePool } from "@cloudflare/vitest-pool-workers";
 export default defineConfig({
   test: {
     pool: cloudflarePool({
-      // The Worker entrypoint run in the same isolate as tests (enables SELF + DO access).
+      // The Worker entrypoint run in the same isolate as tests.
       main: "./src/index.ts",
       wrangler: { configPath: "./wrangler.jsonc" },
     }),

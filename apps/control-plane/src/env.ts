@@ -24,8 +24,14 @@ export interface Env {
   // The worker's own origin (for the agent harness MCP endpoint, §5.20).
   // Set via wrangler vars; defaults to http://localhost:8787 in local dev.
   WORKER_ORIGIN?: string;
-  // The sandbox DO namespace (Container-backed, for the real profile, §6.3).
-  SANDBOX_DO?: DurableObjectNamespace;
+  // Sandbox DO namespace (CF Sandbox SDK, for the real profile).
+  // When bound, the SandboxSdkProvider provisions CF Containers.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SANDBOX_DO?: any;
+  // GitHub repo URL for sandbox git clone (e.g., https://github.com/org/repo.git).
+  GITHUB_REPO_URL?: string;
+  // GitHub token for git push + PR creation.
+  GITHUB_TOKEN?: string;
   // Browser Rendering binding (for frontend repo screenshots, §8.2).
   BROWSER?: Fetcher;
   // Durable Object: per-session hot state (docs/12 §2).
@@ -90,22 +96,28 @@ export async function buildServices(profile: DevProfile, env?: Env): Promise<Pro
     // Real profile (§6): use CloudflareSandboxProvider + AiGatewayModelProvider
     // when the dev-shared creds are bound. Fall back to mocks if absent so the
     // loop is runnable pre-provisioning (§6.7 validation needs the real creds).
-    const useRealSandbox = Boolean(env.SANDBOX_ACCOUNT_ID && env.SANDBOX_API_TOKEN);
+    const useRealSandbox = Boolean(env.SANDBOX_DO);
     const useRealModel = Boolean(env.AI_GATEWAY_ENDPOINT && env.AI_GATEWAY_KEY);
-    const [localMod, mockMod, cfMod, gwMod] = await Promise.all([
+    const [localMod, mockMod, sdkMod, gwMod] = await Promise.all([
       import("./sandbox/local-provider"),
       import("./model/mock-provider"),
-      useRealSandbox ? import("./sandbox/cloudflare-provider") : Promise.resolve(null),
+      useRealSandbox ? import("./sandbox/sandbox-sdk-provider") : Promise.resolve(null),
       useRealModel ? import("./model/ai-gateway-provider") : Promise.resolve(null),
     ]);
     cachedServices = {
       profile: "real",
       sandbox:
-        cfMod && useRealSandbox && env.SANDBOX_DO
-          ? new cfMod.CloudflareSandboxProvider(
+        sdkMod && useRealSandbox
+          ? new sdkMod.SandboxSdkProvider(
               {
-                accountId: env.SANDBOX_ACCOUNT_ID!,
-                apiToken: env.SANDBOX_API_TOKEN!,
+                gitName: "forge-agent",
+                gitEmail: "forge@noreply.example.com",
+                repoCloneUrl: env.GITHUB_REPO_URL,
+                githubToken: env.GITHUB_TOKEN,
+                modelApiKey: env.AI_GATEWAY_KEY,
+                modelProvider: env.AI_GATEWAY_PROVIDER ?? "xai",
+                modelId: env.AI_GATEWAY_MODEL ?? "grok-4.3",
+                forgeMcpEndpoint: `${env.WORKER_ORIGIN ?? "https://forge-control-plane-dev.dailysocial.workers.dev"}/api/mcp`,
               },
               env.SANDBOX_DO,
             )

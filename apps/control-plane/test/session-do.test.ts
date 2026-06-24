@@ -4,14 +4,14 @@ import { env } from "cloudflare:workers";
 import { IllegalTransitionError, type SessionStatus } from "@forge/domain";
 
 // Seam 2 — SessionDO + state machine (docs/12 §2, docs/11, checklist §5.1–5.5).
-// Uses the DO RPC stub: env.SESSION_DO.get(id) returns a stub whose methods
+// Uses the DO RPC stub: env.sessionDo.get(id) returns a stub whose methods
 // (spawn, transitionTo, getStatus, ...) are callable directly — the Agent base
 // exposes them over RPC. Real SQLite (miniflare); mocks only at the boundary.
 
 /** Get an RPC stub for a session DO by name. */
 function session(id: string) {
-  const idObj = env.SESSION_DO.idFromName(id);
-  return env.SESSION_DO.get(idObj) as unknown as {
+  const idObj = env.sessionDo.idFromName(id);
+  return env.sessionDo.get(idObj) as unknown as {
     spawn(i: {
       repoId: string;
       branch: string;

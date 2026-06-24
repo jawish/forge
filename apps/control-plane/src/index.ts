@@ -26,7 +26,10 @@ import { SLACK_SIGNATURE_HEADER, SLACK_TIMESTAMP_HEADER } from "./slack/verify";
 import { buildSlackPorts } from "./slack/ports";
 import { sessionIdFromBranch, webhookToTransition } from "./git/pr";
 
-// Export the DO class so the wrangler binding resolves it.
+// Export the SessionDO class so the wrangler binding resolves it.
+// The Sandbox DO class from @cloudflare/sandbox is resolved by wrangler from
+// the sandbox-entry.ts file (referenced via the DO binding in wrangler.jsonc).
+// We do NOT import it here to keep the test bundle clean.
 export { SessionDO };
 
 export default {
@@ -114,8 +117,31 @@ export default {
       }
 
       // --- Seam 5: platform MCP tools (docs/10 §6, §5.15) ------------------
-      // /api/mcp/tools  — list the 4 platform-provided MCP tools.
-      // /api/mcp/call   — call a tool against a session's DO (agent-facing).
+      // /api/mcp         — JSON-RPC MCP server (OpenCode-compatible, docs/19 §7)
+      // /api/mcp/tools   — list the 4 platform-provided MCP tools (legacy).
+      // /api/mcp/call    — call a tool against a session's DO (legacy).
+
+      // JSON-RPC MCP server (the primary MCP endpoint OpenCode connects to).
+      // Handles initialize, tools/list, tools/call per the MCP spec.
+      if (url.pathname === "/api/mcp" && request.method === "POST") {
+        const { handleMcpBatch } = await import("./mcp/server");
+        const body = (await request.json()) as Parameters<typeof handleMcpBatch>[0];
+        const result = await handleMcpBatch(body, env);
+        span.setAttribute("http.status", 200);
+        return jsonResponse(result);
+      }
+      // MCP SSE endpoint (for OpenCode's remote MCP transport).
+      if (url.pathname === "/api/mcp" && request.method === "GET") {
+        span.setAttribute("http.status", 200);
+        return jsonResponse({
+          jsonrpc: "2.0",
+          info: { name: "forge-mcp", version: "1.0.0" },
+          endpoint: "/api/mcp",
+          methods: ["initialize", "tools/list", "tools/call"],
+        });
+      }
+
+      // Legacy MCP tool endpoints (kept for backward compat).
       if (url.pathname === "/api/mcp/tools") {
         span.setAttribute("http.status", 200);
         return jsonResponse({ tools: FORGE_MCP_TOOLS });

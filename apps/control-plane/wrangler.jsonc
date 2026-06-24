@@ -62,15 +62,20 @@
     "dev": {
       "name": "forge-control-plane-dev",
       "vars": { "FORGE_DEV_PROFILE": "real", "FORGE_DEV_BYPASS_AUTH": "true" },
-      // The SessionDO durable object (required for all sessions — not inherited
-      // from top-level by named envs).
+      // The SessionDO + Sandbox SDK durable objects.
       "durable_objects": {
-        "bindings": [{ "name": "sessionDo", "class_name": "SessionDO" }],
+        "bindings": [
+          { "name": "sessionDo", "class_name": "SessionDO" },
+          { "name": "SANDBOX_DO", "class_name": "Sandbox" },
+        ],
       },
+      // CF Sandbox SDK containers config — the base image the Sandbox SDK uses.
+      "containers": [{ "class_name": "Sandbox", "image": "./sandbox.Dockerfile" }],
       "migrations": [
         {
           "tag": "v1",
           "new_classes": ["SessionDO"],
+          "new_sqlite_classes": ["Sandbox"],
         },
       ],
       // Real CF resources (provisioned via wrangler, §6.6).

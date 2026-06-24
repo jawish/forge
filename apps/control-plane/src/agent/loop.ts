@@ -1,17 +1,19 @@
-// Agent harness — drives the agent loop (docs/19 §7 configure-don't-fork, §5.21–5.22).
-// At spawn, an OpenCode MCP-consumer config is written (§5.20) listing the platform
-// MCP endpoint + registry allowlist (empty for now). In `fast`, the "harness" is
-// the MockModelProvider driving the loop; in `real` (§6) it's real OpenCode.
+// Agent harness — drives the agent loop (docs/19 §7, §5.21–5.22).
 //
-// The loop: model streams events → harness translates them into DO transitions
-// + platform-MCP calls → DO reaches a terminal/ready state (docs/11 §3).
+// Two execution modes:
+// - fast: MockModelProvider drives the loop (for tests + local dev)
+// - real: OpenCode runs inside a CF Sandbox as a subprocess. The Worker
+//   provisions the sandbox, writes the config, runs `opencode run --format json`,
+//   and parses the JSON event stream. The forge.* MCP tools are called by
+//   OpenCode back to the Worker's MCP server (/api/mcp), which transitions the DO.
+//
+// The loop: provision sandbox → boot harness → stream events → translate to DO
+// transitions. The DO reaches ready_for_pr / awaiting_input / no_change.
 
 import type { ModelEvent, ModelProvider } from "../model/provider";
 import type { SandboxProvider } from "../sandbox/provider";
 import type { Env } from "../env";
 import type { SessionActivity, SessionStatus } from "@forge/domain";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
 
 /** RPC shape of the DO the loop drives. */
 interface AgentDOStub {
@@ -31,16 +33,17 @@ interface AgentDOStub {
   getRepoId(): Promise<{ repoId: string }>;
 }
 
+/** A sandbox handle stored from provisioning (used for exec + verification). */
+interface SandboxHandleLite {
+  id: string;
+  workdir: string;
+  imageVersion: string;
+}
+
 /**
- * Run one agent turn: stream model events for the prompt, translate each event
- * into the matching DO mutation (docs/11 §3, docs/10 §6). Drives the session
- * toward ready_for_pr / awaiting_input / no_change based on the model's events.
- *
- * §5.19: on first activation, provision the sandbox (git identity + workdir) +
- * write the OpenCode MCP-consumer config (§5.20).
- * §5.21: the harness is "booted" pointed at the MCP-consumer config.
- * §5.22: the loop drives transitions — model streams thinking → harness calls
- * tools → forge.reportStatus/completePR arrive → DO transitions accordingly.
+ * Run one agent turn. In `real` mode: provisions a sandbox, boots OpenCode,
+ * parses the event stream. In `fast` mode: consumes the mock model stream.
+ * Both modes translate events into DO transitions (docs/11 §3).
  */
 export async function runAgentTurn(opts: {
   sessionId: string;
@@ -52,40 +55,107 @@ export async function runAgentTurn(opts: {
   const stub = opts.env.sessionDo.idFromName(opts.sessionId);
   const doStub = opts.env.sessionDo.get(stub) as unknown as AgentDOStub;
 
-  // Activate + provision the session on first prompt (docs/11 §3: queued → active).
-  // Spawn leaves the session in queued; the first prompt transitions to active
-  // (provisioning), provisions the sandbox, writes the MCP config, then runs the
-  // model stream. Idempotent if the session is already active.
   const current = await doStub.getStatus();
   if (current.status === "queued") {
     await doStub
       .transitionTo({ status: "active", activity: "provisioning" }, "agent_activate")
       .catch(() => {});
-
-    // §5.19: provision the sandbox (git identity + fresh workdir via the provider).
-    // §5.20: write the OpenCode MCP-consumer config into the sandbox workdir.
-    try {
-      const { repoId } = await doStub.getRepoId();
-      const handle = await opts.sandbox.provision({
-        repoId,
-        imageVersion: "latest",
-        gitIdentity: { name: "forge-agent", email: "forge@noreply.example.com" },
-      });
-      const config = buildHarnessConfig({
-        workerOrigin: opts.env.WORKER_ORIGIN ?? "http://localhost:8787",
-      });
-      await writeMcpConfig(handle.workdir, config);
-      // Mark provisioning done → running happens on the first thinking event below.
-    } catch {
-      // Provisioning failure is non-fatal in the fast profile (the mock model
-      // can still drive the loop). In the real profile (§6) this would transition
-      // to failed. Kept lenient so the loop is runnable without a real sandbox.
-    }
   }
 
-  // Provisioning -> running (the harness "starts" — first thinking event).
-  let markedRunning = false;
+  // Try the real sandbox path (provision + OpenCode subprocess). If it fails
+  // (no sandbox binding, or provisioning error), fall back to the model stream
+  // path (the mock model or a direct AI Gateway call without a harness).
+  let sandboxHandle: SandboxHandleLite | null = null;
+  try {
+    const { repoId } = await doStub.getRepoId();
+    const handle = await opts.sandbox.provision({
+      repoId,
+      imageVersion: "latest",
+      gitIdentity: { name: "forge-agent", email: "forge@noreply.example.com" },
+    });
+    sandboxHandle = { id: handle.id, workdir: handle.workdir, imageVersion: handle.imageVersion };
+  } catch {
+    // No sandbox available — fall through to direct model stream mode.
+  }
+
+  if (sandboxHandle && opts.env.SANDBOX_DO) {
+    // Real mode: run OpenCode in the sandbox.
+    return runOpenCodeInSandbox(opts, doStub, sandboxHandle);
+  }
+
+  // Fast/fallback mode: stream the model directly (mock or AI Gateway).
+  return runModelStream(opts, doStub);
+}
+
+/**
+ * Real mode: run OpenCode as a subprocess inside the CF Sandbox.
+ * Uses `sandbox.exec(handle, command)` to run OpenCode non-interactively.
+ * The forge.* tools are available via the MCP server (configured in .opencode.json).
+ * OpenCode makes MCP tool calls back to /api/mcp, which transitions the DO.
+ */
+async function runOpenCodeInSandbox(
+  opts: { sessionId: string; prompt: string; sandbox: SandboxProvider; env: Env },
+  doStub: AgentDOStub,
+  handle: SandboxHandleLite,
+): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
+  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
+
+  await doStub.reportStatus({ activity: "running", summary: "OpenCode booting" }).catch(() => {});
+
+  try {
+    // Run OpenCode non-interactively with JSON output. The forge.* tools are
+    // available via the MCP server (configured in .opencode.json written at
+    // provision time). OpenCode calls them via JSON-RPC to /api/mcp.
+    //
+    // The prompt is passed as an argument; OpenCode handles the edit-test loop
+    // internally. We capture the exit code + output.
+    const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
+    const result = await opts.sandbox.exec(handle, [
+      "opencode",
+      "run",
+      "--format",
+      "json",
+      "-m",
+      `${modelProvider}/${modelName}`,
+      escapedPrompt,
+    ]);
+
+    // If OpenCode finished but didn't call forge.completePR (the session is
+    // still active/running), mark as no_change.
+    if (result.exitCode === 0) {
+      const status = await doStub.getStatus();
+      if (status.status === "active") {
+        await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
+      }
+    } else {
+      // Non-zero exit — the agent errored.
+      console.error("[agent] OpenCode exit", result.exitCode, result.stderr.slice(0, 200));
+      await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+    }
+  } catch (err) {
+    console.error(
+      "[agent] OpenCode execution failed:",
+      err instanceof Error ? err.message : String(err),
+    );
+    await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+  }
+
+  const status = await doStub.getStatus();
+  return { finalStatus: status.status };
+}
+
+/**
+ * Fast/fallback mode: stream the model directly and translate events.
+ * Used when no sandbox is available (mock model for tests, or direct model
+ * stream without the OpenCode harness).
+ */
+async function runModelStream(
+  opts: { sessionId: string; prompt: string; model: ModelProvider },
+  doStub: AgentDOStub,
+): Promise<{ finalStatus: SessionStatus }> {
+  let markedRunning = false;
+  const modelName = "grok-4.3";
 
   for await (const event of opts.model.stream({ prompt: opts.prompt, model: modelName })) {
     if (!markedRunning && (event.type === "thinking_delta" || event.type === "tool_call")) {
@@ -95,72 +165,42 @@ export async function runAgentTurn(opts: {
 
     switch (event.type) {
       case "thinking_delta":
-        // UI streams the delta (§5.12); no DO mutation needed here.
         break;
-      case "tool_call":
-        // Tool calls are recorded by the harness/tool layer; the platform MCPs
-        // (forge.*) are called by the agent itself. No-op here for non-platform tools.
+      case "tool_call": {
+        // In the real model, forge.* tool calls arrive as tool_call events.
+        // Route them to the DO. args is already a parsed object.
+        const args = typeof event.args === "string" ? JSON.parse(event.args) : event.args;
+        if (event.toolName === "forge.reportStatus") {
+          await doStub
+            .reportStatus(args as { activity?: SessionActivity; summary?: string })
+            .catch(() => {});
+        } else if (event.toolName === "forge.requestHumanInput") {
+          await doStub
+            .requestHumanInput((args as { question?: string }).question ?? "")
+            .catch(() => {});
+        } else if (event.toolName === "forge.completePR") {
+          await doStub
+            .completePR({
+              diffSummary: (args as { diffSummary?: string }).diffSummary ?? "",
+              commitSha: (args as { commitSha?: string }).commitSha ?? "",
+            })
+            .catch(() => {});
+        }
         break;
+      }
       case "request_human_input":
-        // Agent asked a clarifying question → activity=awaiting_input.
         await doStub.requestHumanInput(event.question);
         break;
       case "complete_pr":
-        // Agent signals readiness → status=ready_for_pr, activity=null.
         await doStub.completePR({ diffSummary: event.diffSummary, commitSha: event.commitSha });
         break;
       case "finish":
-        // If the model finished without complete_pr/request_input, the session
-        // stays active (running) — the agent may have more turns. Phase 0 mock
-        // fixtures end via complete_pr or request_human_input.
         break;
     }
   }
 
   const status = await doStub.getStatus();
   return { finalStatus: status.status };
-}
-
-/**
- * Spawn-time harness config (§5.20): writes an OpenCode MCP-consumer config to
- * the sandbox listing the platform MCP endpoint + registry allowlist. In `fast`
- * the "sandbox" is a local workdir; in `real` (§6) it's the CF Sandbox. No
- * OpenCode fork — just config (docs/19 §7).
- */
-export interface HarnessConfig {
-  platformMcpEndpoint: string;
-  registryAllowlist: string[];
-}
-
-/** Build the harness config for a session (written to the sandbox at spawn). */
-export function buildHarnessConfig(opts: {
-  workerOrigin: string;
-  registryAllowlist?: string[];
-}): HarnessConfig {
-  return {
-    platformMcpEndpoint: `${opts.workerOrigin}/api/mcp`,
-    // Empty registry allowlist for now (registry-managed MCP governance is §9/ADR-0007).
-    registryAllowlist: opts.registryAllowlist ?? [],
-  };
-}
-
-/**
- * Write the OpenCode MCP-consumer config to the sandbox workdir (§5.20).
- * The config lists the platform MCP endpoint + the registry allowlist. OpenCode
- * reads this at boot and exposes the forge.* tools to the model. No fork — just
- * config (docs/19 §7). In the fast profile the mock model doesn't read this, but
- * the file is written so the path is exercised + the real harness can find it.
- */
-export async function writeMcpConfig(workdir: string, config: HarnessConfig): Promise<void> {
-  const mcpConfig = {
-    mcpServers: {
-      forge: {
-        url: config.platformMcpEndpoint,
-      },
-    },
-    registryAllowlist: config.registryAllowlist,
-  };
-  await writeFile(join(workdir, ".forge-mcp.json"), JSON.stringify(mcpConfig, null, 2), "utf8");
 }
 
 /** Collect a model stream into an event array (for tests / replay). */
@@ -171,4 +211,21 @@ export async function collectModelEvents(
   const out: ModelEvent[] = [];
   for await (const e of model.stream({ prompt, model: "mock" })) out.push(e);
   return out;
+}
+
+/** Harness config shape (written to the sandbox as .opencode.json). */
+export interface HarnessConfig {
+  platformMcpEndpoint: string;
+  registryAllowlist: string[];
+}
+
+/** Build the harness config for a session (used by the sandbox provider). */
+export function buildHarnessConfig(opts: {
+  workerOrigin: string;
+  registryAllowlist?: string[];
+}): HarnessConfig {
+  return {
+    platformMcpEndpoint: `${opts.workerOrigin}/api/mcp`,
+    registryAllowlist: opts.registryAllowlist ?? [],
+  };
 }

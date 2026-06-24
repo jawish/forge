@@ -29,7 +29,7 @@ describe("seam 6 — /api/ops/health (checklist §4.7)", () => {
 
   it("env is the fast-profile Env shape", () => {
     expect(env.FORGE_DEV_PROFILE).toBe("fast");
-    expect(env.SESSION_DO).toBeDefined();
+    expect(env.sessionDo).toBeDefined();
     expect(env.DB).toBeDefined();
     expect(env.ARTIFACTS).toBeDefined();
     expect(env.AUDIT).toBeDefined();

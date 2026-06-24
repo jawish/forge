@@ -43,8 +43,8 @@ async function spawnedRunningSession(repoId: string): Promise<string> {
   const cj = (await createRes.json()) as { result: { data: { sessionId: string } } };
   const sessionId = cj.result.data.sessionId;
   // queued -> active(provisioning) -> running via the DO directly.
-  const idObj = env.SESSION_DO.idFromName(sessionId);
-  const stub = env.SESSION_DO.get(idObj) as unknown as {
+  const idObj = env.sessionDo.idFromName(sessionId);
+  const stub = env.sessionDo.get(idObj) as unknown as {
     transitionTo(
       to: { status?: string; activity?: string | null },
       reason: string,
@@ -77,8 +77,8 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
       sandbox,
       env,
     });
-    const idObj = env.SESSION_DO.idFromName(sessionId);
-    const stub = env.SESSION_DO.get(idObj) as unknown as {
+    const idObj = env.sessionDo.idFromName(sessionId);
+    const stub = env.sessionDo.get(idObj) as unknown as {
       getStatus(): Promise<{ status: string; activity: string | null }>;
     };
     const status = await stub.getStatus();
@@ -116,8 +116,8 @@ describe("seam 5 — agent harness + mock model (§5.21–5.23)", () => {
     // After the loop reaches ready_for_pr, the agent would have recorded a diff
     // artifact via forge.createArtifact (the fixture models the read+complete path).
     // The DO is now ready_for_pr (verified above for the same fixture).
-    const idObj = env.SESSION_DO.idFromName(sessionId);
-    const stub = env.SESSION_DO.get(idObj) as unknown as {
+    const idObj = env.sessionDo.idFromName(sessionId);
+    const stub = env.sessionDo.get(idObj) as unknown as {
       getStatus(): Promise<{ status: string }>;
     };
     expect((await stub.getStatus()).status).toBe("ready_for_pr");

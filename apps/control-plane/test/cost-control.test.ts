@@ -8,8 +8,8 @@ import { isKillSwitchOn, KILLSWITCH_KEY } from "@forge/domain";
 
 /** RPC stub for the cost-control DO methods. */
 function session(id: string) {
-  const idObj = env.SESSION_DO.idFromName(id);
-  return env.SESSION_DO.get(idObj) as unknown as {
+  const idObj = env.sessionDo.idFromName(id);
+  return env.sessionDo.get(idObj) as unknown as {
     spawn(i: {
       repoId: string;
       branch: string;

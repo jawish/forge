@@ -23,7 +23,9 @@
   },
   "dependencies": {
     "@cloudflare/agents": "0.0.16",
+    "@cloudflare/containers": "^0.3.7",
     "@cloudflare/puppeteer": "^1.1.0",
+    "@cloudflare/sandbox": "^0.12.1",
     "@forge/domain": "workspace:*",
     "@slack/web-api": "7.17.0",
     "@trpc/server": "11.18.0",
