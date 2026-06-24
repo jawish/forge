@@ -62,6 +62,25 @@
     "dev": {
       "name": "forge-control-plane-dev",
       "vars": { "FORGE_DEV_PROFILE": "real" },
+      // Real CF resources (provisioned via wrangler, §6.6).
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "forge-dev-control-plane",
+          "database_id": "0df9e151-cffe-4d0d-be25-75c0cdddd20e",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "r2_buckets": [
+        { "binding": "ARTIFACTS", "bucket_name": "forge-dev-artifacts" },
+        { "binding": "SANDBOXES", "bucket_name": "forge-dev-sandboxes" },
+        { "binding": "AUDIT", "bucket_name": "forge-dev-audit" },
+      ],
+      "kv_namespaces": [{ "binding": "CONFIG_KV", "id": "d4af045664ee45f6842d3e613c087e1b" }],
+      "queues": {
+        "producers": [{ "binding": "WORK_QUEUE", "queue": "forge-dev-work" }],
+        "consumers": [{ "queue": "forge-dev-work", "max_batch_size": 5 }],
+      },
     },
     "staging": {
       "name": "forge-control-plane-staging",
