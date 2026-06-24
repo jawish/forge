@@ -9,8 +9,11 @@
 import * as cf from "@pulumi/cloudflare";
 import * as pulumi from "@pulumi/pulumi";
 
-const config = new pulumi.Config();
-const accountId = config.require("cloudflare:accountId");
+// Read config from the 'cloudflare' namespace (where the provider's config lives).
+// pulumi.Config() defaults to the project name ('forge-infra'); we need the
+// 'cloudflare' namespace so `pulumi config set cloudflare:accountId` works.
+const config = new pulumi.Config("cloudflare");
+const accountId = config.require("accountId");
 const env = pulumi.getStack(); // dev | staging | prod
 const namePrefix = `forge-${env}`;
 

@@ -1,7 +1,4 @@
 name: forge-infra
-description: Forge platform infrastructure — CF Workers/DO/D1/R2/KV/Queues/Vectorize/AI Gateway/Sandbox/Access + ClickHouse Cloud + Grafana Cloud (docs/17).
+description: Forge platform Cloudflare infrastructure (docs/17 §2, checklist §6.6)
 runtime: nodejs
-config:
-  pulumi:tags:
-    value:
-      pulumi:template: ""
+main: src/index.ts

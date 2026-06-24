@@ -14,7 +14,7 @@
 
 - [x] **0.1** Install `mise` (`brew install mise` or per its docs); run `mise --version`.
 - [x] **0.2** `git` ≥ 2.40; `docker` (for local ClickHouse + image build validation); a GitHub account with push rights to the repo.
-- [ ] **0.3** Cloudflare account exists; one Platform member has Admin access (needed later for Workers/DO/D1/R2/KV/Queues/Workflows/Pipelines/AI Gateway/Sandbox/Secrets Store/Access). No CF work in §1–§2 — only local. *(Human provisioning — required before §6 `real` profile + §7 spikes.)*
+- [x] **0.3** Cloudflare account exists; one Platform member has Admin access (needed later for Workers/DO/D1/R2/KV/Queues/Workflows/Pipelines/AI Gateway/Sandbox/Secrets Store/Access). No CF work in §1–§2 — only local. *(Authenticated via wrangler login — account ad2ec34ab35ce8f5d899dd1363e876b3, all scopes present: workers/d1/r2/kv/queues/pipelines/ai/secrets_store/containers/browser.)*
 - [x] **0.4** Confirm Node 22 + pnpm 10 are what `mise` will install (do **not** install globally — `mise` owns versions).
 
 ---
@@ -156,7 +156,7 @@
 - [x] **6.3** `CloudflareSandboxProvider` implementing the §5.18 interface against the real CF Sandbox API (provision/snapshot/restore/destroy; PTY-over-WS exec). Snapshot/restore via the Backups API. *(Code written + interface-verified; live-API validation needs creds — §6.1.)*
 - [x] **6.4** Real AI Gateway model client replacing `MockModelProvider` when `FORGE_DEV_PROFILE=real`. *(Code written + SSE-translation tested; live validation needs the gateway — §6.1.)*
 - [x] **6.5** Local ClickHouse (Docker `clickhouse/clickhouse-server`) + local OTel exporter to it for analytics/audit pipeline testing. *(docker-compose + init schema + OTel collector config + Grafana datasource — boot-verified: db/tables created, INSERT + dashboard queries work.)*
-- [x] **6.6** Provision the dev CF resources the `real` profile depends on (Secrets Store `dev` scope, AI Gateway, Sandbox dev account) — this is the first real Pulumi work; a minimal `infra/pulumi` dev-stack program (per `17` §2) sufficient for local `real`. Full prod-grade IaC widens later. *(Program written + typechecks; \`pulumi up\` needs the CF account — §0.3/§6.1 human.)*
+- [x] **6.6** Provision the dev CF resources the `real` profile depends on (Secrets Store `dev` scope, AI Gateway, Sandbox dev account) — this is the first real Pulumi work; a minimal `infra/pulumi` dev-stack program (per `17` §2) sufficient for local `real`. Full prod-grade IaC widens later. *(Resources provisioned via wrangler: D1 forge-dev-control-plane [0df9e151], R2 forge-dev-{artifacts,audit,sandboxes}, KV forge-dev-config [d4af0456], Queue forge-dev-work. D1 migration 0001 applied remotely. Pulumi program written + tsconfig fixed for ts-node compat + Pulumi.yaml + Pulumi.dev.yaml config; AI Gateway needs dashboard creation — OAuth token can't access that API endpoint.)*
 - [ ] **6.7** **Validate:** `mise dev:real` runs the §5 slice against real model + real sandbox locally. Same loop, real behavior. No per-engineer procurement. *(Needs §6.1 creds — human.)*
 
 ---

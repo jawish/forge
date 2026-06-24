@@ -1,17 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "noEmit": false,
-    "module": "Preserve",
-    "moduleResolution": "Bundler",
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "lib": ["es2020"],
+    "strict": true,
+    "skipLibCheck": true,
     "esModuleInterop": true,
-    "verbatimModuleSyntax": false,
-    "isolatedModules": false,
-    "lib": ["ES2022"],
-    "types": ["node"]
+    "resolveJsonModule": true,
+    "outDir": "dist"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts"]
 }
