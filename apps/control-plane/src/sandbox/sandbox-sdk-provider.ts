@@ -109,13 +109,13 @@ export class SandboxSdkProvider implements SandboxProvider {
 
   private async getSandboxClient(sandboxId: string) {
     const mod = await ensureSandboxMod();
-    // getSandbox() returns a Sandbox client object with .commands, .files,
-    // .processes, etc. directly accessible (they make HTTP requests to the
-    // Sandbox DO internally). We do NOT access .client — that's an internal
-    // DO property not available via RPC from outside the DO.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return mod.getSandbox(this.sandboxNs, sandboxId, {
-      sleepAfter: this.cfg.sleepAfter ?? "10m",
+      sleepAfter: this.cfg.sleepAfter ?? "30m", // keep warm for 30 min
+      containerTimeouts: {
+        instanceGetTimeoutMS: 120_000, // 2 min for container provisioning
+        portReadyTimeoutMS: 180_000, // 3 min for port to be ready
+      },
     });
   }
 
