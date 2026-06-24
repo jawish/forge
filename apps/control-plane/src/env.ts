@@ -19,6 +19,8 @@ export type DevProfile = "fast" | "real";
 export interface Env {
   // Profile selection (vars.FORGE_DEV_PROFILE).
   FORGE_DEV_PROFILE: string;
+  // Dev-only: bypass CF Access JWT check for API testing. NEVER set in prod.
+  FORGE_DEV_BYPASS_AUTH?: string;
   // The worker's own origin (for the agent harness MCP endpoint, §5.20).
   // Set via wrangler vars; defaults to http://localhost:8787 in local dev.
   WORKER_ORIGIN?: string;

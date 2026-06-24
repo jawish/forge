@@ -32,18 +32,24 @@ export async function createContext(opts: { req: Request; env: Env }): Promise<C
   if (profile === "fast") {
     userId = DEV_USER_ID;
   } else {
-    const jwt = opts.req.headers.get(CF_ACCESS_HEADER);
-    if (!jwt) {
-      throw new ForgeError({
-        category: "auth",
-        code: "UNAUTHENTICATED",
-        message: "missing CF Access identity",
-        correlationId,
-      });
+    // Dev bypass: when FORGE_DEV_BYPASS_AUTH is set, skip JWT verification and
+    // use the dev user. This is ONLY for the dev environment — never set in prod.
+    if (opts.env.FORGE_DEV_BYPASS_AUTH === "true") {
+      userId = DEV_USER_ID;
+    } else {
+      const jwt = opts.req.headers.get(CF_ACCESS_HEADER);
+      if (!jwt) {
+        throw new ForgeError({
+          category: "auth",
+          code: "UNAUTHENTICATED",
+          message: "missing CF Access identity",
+          correlationId,
+        });
+      }
+      // §8: verify the JWT against CF Access public keys and extract `sub`.
+      // For now (pre-§8), decode the payload to get the email/sub as a stand-in.
+      userId = decodeCfAccessSub(jwt) ?? DEV_USER_ID;
     }
-    // §8: verify the JWT against CF Access public keys and extract `sub`.
-    // For now (pre-§8), decode the payload to get the email/sub as a stand-in.
-    userId = decodeCfAccessSub(jwt) ?? DEV_USER_ID;
   }
 
   return { env: opts.env, userId, correlationId };

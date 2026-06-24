@@ -61,7 +61,18 @@
     },
     "dev": {
       "name": "forge-control-plane-dev",
-      "vars": { "FORGE_DEV_PROFILE": "real" },
+      "vars": { "FORGE_DEV_PROFILE": "real", "FORGE_DEV_BYPASS_AUTH": "true" },
+      // The SessionDO durable object (required for all sessions — not inherited
+      // from top-level by named envs).
+      "durable_objects": {
+        "bindings": [{ "name": "SESSION_DO", "class_name": "SessionDO" }],
+      },
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_classes": ["SessionDO"],
+        },
+      ],
       // Real CF resources (provisioned via wrangler, §6.6).
       "d1_databases": [
         {
