@@ -31,6 +31,7 @@ interface AgentDOStub {
   completePR(c: { diffSummary: string; commitSha: string }): Promise<void>;
   getStatus(): Promise<{ status: SessionStatus; activity: SessionActivity | null }>;
   getRepoId(): Promise<{ repoId: string }>;
+  setAgentProcess(input: { sandboxId: string; processId: string }): Promise<void>;
 }
 
 /** A sandbox handle stored from provisioning (used for exec + verification). */
@@ -120,48 +121,55 @@ async function runOpenCodeInSandbox(
 ): Promise<{ finalStatus: SessionStatus }> {
   const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
   const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
+  const sandboxId = handle.sandboxId ?? handle.id;
 
   await doStub.reportStatus({ activity: "running", summary: "OpenCode booting" }).catch(() => {});
 
-  // Use the blocking exec approach — the startBackground + poll pattern fails
-  // because waitUntil cancels the in-flight RPC before startProcess completes.
-  // The Workers paid plan allows up to 5 min wall-clock with waitUntil, which
-  // is enough for OpenCode to boot, call the model, and return a result.
-  return runOpenCodeBlocking(opts, doStub, handle);
-}
-
-/** Blocking fallback — used when the provider doesn't support background processes. */
-async function runOpenCodeBlocking(
-  opts: { sessionId: string; prompt: string; sandbox: SandboxProvider; env: Env },
-  doStub: AgentDOStub,
-  handle: SandboxHandleLite,
-): Promise<{ finalStatus: SessionStatus }> {
-  const modelName = opts.env.AI_GATEWAY_MODEL ?? "grok-4.3";
-  const modelProvider = opts.env.AI_GATEWAY_PROVIDER ?? "xai";
-
   try {
     const escapedPrompt = opts.prompt.replace(/'/g, "'\\''");
-    const result = await opts.sandbox.exec(
-      handle,
-      [
-        "opencode",
-        "run",
-        "--format",
-        "json",
-        "-m",
-        `${modelProvider}/${modelName}`,
-        `"${escapedPrompt}"`,
-      ],
-      { sessionId: opts.sessionId },
-    );
-    console.log("[agent] OpenCode exit code:", result.exitCode);
-    if (result.exitCode !== 0) {
-      console.error("[agent] OpenCode stderr:", result.stderr.slice(0, 300));
-      await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+
+    if (opts.sandbox.startBackground) {
+      // Start OpenCode as a background process (fire-and-forget).
+      // The DO alarm polls the process status every 10s until it finishes.
+      const process = await opts.sandbox.startBackground(
+        handle,
+        [
+          "opencode",
+          "run",
+          "--format",
+          "json",
+          "-m",
+          `${modelProvider}/${modelName}`,
+          `"${escapedPrompt}"`,
+        ],
+        { sessionId: opts.sessionId },
+      );
+      console.log("[agent] OpenCode started:", process.processId);
+      // Store process info so the DO alarm can poll it.
+      await doStub.setAgentProcess({ sandboxId, processId: process.processId }).catch(() => {});
     } else {
-      const status = await doStub.getStatus();
-      if (status.status === "active") {
-        await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
+      // Fallback: blocking exec (tests / fast profile).
+      const result = await opts.sandbox.exec(
+        handle,
+        [
+          "opencode",
+          "run",
+          "--format",
+          "json",
+          "-m",
+          `${modelProvider}/${modelName}`,
+          `"${escapedPrompt}"`,
+        ],
+        { sessionId: opts.sessionId },
+      );
+      console.log("[agent] OpenCode exit:", result.exitCode);
+      if (result.exitCode !== 0) {
+        await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
+      } else {
+        const st = await doStub.getStatus();
+        if (st.status === "active") {
+          await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
+        }
       }
     }
   } catch (err) {

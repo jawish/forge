@@ -107,6 +107,14 @@ export const SESSION_DO_MIGRATION_STATEMENTS: readonly string[] = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS agent_process (
+    session_id TEXT NOT NULL,
+    sandbox_id TEXT NOT NULL,
+    process_id TEXT NOT NULL PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'running',
+    exit_code INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+  )`,
   `INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '${SCHEMA_VERSION.toString()}')`,
 ];
 
