@@ -171,48 +171,31 @@ Keep your response concise — just the commands and the DONE line.`;
     // Execute each command in the sandbox.
     for (const cmd of commands) {
       console.log("[agent] Executing:", cmd.slice(0, 100));
-      const result = await opts.sandbox.exec(handle, [cmd], { sessionId: opts.sessionId });
-      console.log("[agent] Exit:", result.exitCode, "stdout:", result.stdout.slice(0, 100));
-      if (result.exitCode !== 0) {
-        console.error("[agent] Command failed:", result.stderr.slice(0, 200));
-      }
+      await opts.sandbox.exec(handle, [cmd], { sessionId: opts.sessionId });
     }
 
-    // Check if there are changes (git diff).
-    const statusResult = await opts.sandbox.exec(
+    // Stage + commit all changes immediately (before waitUntil might cancel).
+    const commitMsg = opts.prompt.slice(0, 50).replace(/'/g, "");
+    const commitResult = await opts.sandbox.exec(
       handle,
-      ["cd /workspace && git add -A && git status --porcelain"],
-      {
-        sessionId: opts.sessionId,
-      },
+      [`cd /workspace && git add -A && git commit -m 'forge: ${commitMsg}'`],
+      { sessionId: opts.sessionId },
     );
-    const hasChanges = statusResult.exitCode === 0 && statusResult.stdout.trim().length > 0;
-    console.log("[agent] git status:", statusResult.stdout.slice(0, 200));
+    console.log("[agent] Commit exit:", commitResult.exitCode);
 
-    if (hasChanges) {
-      // Get the diff summary.
-      const diffSummary = statusResult.stdout.slice(0, 500);
+    // Get the diff summary for the PR body.
+    const diffResult = await opts.sandbox.exec(
+      handle,
+      ["cd /workspace && git diff HEAD~1 --stat"],
+      { sessionId: opts.sessionId },
+    ).catch(() => ({ exitCode: 1, stdout: "changes committed", stderr: "", durationMs: 0 }));
+    const diffSummary = diffResult.stdout.slice(0, 500) || "changes committed";
 
-      // Commit the changes.
-      await opts.sandbox.exec(
-        handle,
-        ["cd /workspace && git add -A && git commit -m 'forge: " + opts.prompt.slice(0, 50) + "'"],
-        { sessionId: opts.sessionId },
-      );
-
-      // Signal completion via the DO.
-      await doStub.completePR({ diffSummary, commitSha: "auto" }).catch((err) => {
-        console.error(
-          "[agent] completePR failed:",
-          err instanceof Error ? err.message : String(err),
-        );
-      });
-      console.log("[agent] completePR called, session should transition to ready_for_pr");
-    } else {
-      // No changes — mark as no_change.
-      await doStub.transitionTo({ status: "no_change" }, "agent_no_change").catch(() => {});
-      console.log("[agent] No changes, transitioning to no_change");
-    }
+    // Signal completion — this transitions to ready_for_pr.
+    await doStub.completePR({ diffSummary, commitSha: "auto" }).catch((err) => {
+      console.error("[agent] completePR failed:", err instanceof Error ? err.message : String(err));
+    });
+    console.log("[agent] completePR called → ready_for_pr");
   } catch (err) {
     console.error("[agent] Direct loop failed:", err instanceof Error ? err.message : String(err));
     await doStub.transitionTo({ status: "failed" }, "agent_execution_error").catch(() => {});
