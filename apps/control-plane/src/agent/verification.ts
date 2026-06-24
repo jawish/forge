@@ -120,6 +120,69 @@ export function composePrBodyWithVerification(opts: {
 }
 
 /**
+ * Capture screenshots of a frontend repo's running app using Browser Rendering
+ * (docs/01 §closed-loop verification, checklist §8.2). The screenshots are
+ * uploaded to R2 and recorded as artifacts, then folded into the PR body.
+ *
+ * Uses @cloudflare/puppeteer (Cloudflare's Browser Rendering binding). The
+ * BROWSER binding is a puppeteer.Browser instance from env.BROWSER. If the
+ * binding is absent (fast profile), this is a no-op returning empty.
+ *
+ * @cloudflare/puppeteer is a dynamic import — only loaded when screenshots are
+ * needed, so it doesn't bloat the worker bundle or crash fast-profile tests.
+ */
+export async function captureScreenshots(opts: {
+  /** The URL(s) to screenshot (the repo's local dev server, preview URL, etc.). */
+  urls: Array<{ label: string; url: string }>;
+  /** Upload a blob to R2, return the r2:// URI. */
+  uploadArtifact(
+    key: string,
+    content: Buffer | ReadableStream,
+    contentType: string,
+  ): Promise<string>;
+  /** Record an artifact on the session DO. */
+  recordArtifact(input: {
+    type: "screenshot";
+    storageUri: string;
+    generatedBy: "agent";
+    mimeType?: string;
+  }): Promise<{ artifactId: string }>;
+  /** The Browser Rendering binding (env.BROWSER). Undefined in fast profile. */
+  browser?: unknown;
+}): Promise<Array<{ label: string; uri: string }>> {
+  if (!opts.browser) return [];
+
+  // Dynamic import — @cloudflare/puppeteer is a Workers-native binding driver.
+  // Loaded only when a Browser binding is present (real profile).
+  const puppeteer = await import("@cloudflare/puppeteer");
+  const browser = await puppeteer.launch(opts.browser as Fetcher);
+
+  const results: Array<{ label: string; uri: string }> = [];
+
+  for (const target of opts.urls) {
+    const page = await browser.newPage();
+    try {
+      await page.goto(target.url, { waitUntil: "networkidle0", timeout: 15_000 });
+      const screenshot = (await page.screenshot({ type: "png" })) as Buffer;
+
+      const key = `screenshots/${target.label}-${Date.now()}.png`;
+      const uri = await opts.uploadArtifact(key, screenshot, "image/png");
+      await opts.recordArtifact({
+        type: "screenshot",
+        storageUri: uri,
+        generatedBy: "agent",
+        mimeType: "image/png",
+      });
+      results.push({ label: target.label, uri });
+    } finally {
+      await page.close();
+    }
+  }
+
+  return results;
+}
+
+/**
  * Build a VerifyPorts implementation bound to a real Env (R2 ARTIFACTS bucket +
  * the session DO). Used by the agent loop; tests inject fakes.
  */

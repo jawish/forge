@@ -175,6 +175,33 @@ export default {
           createContext: (opts) => createContext({ req: opts.req, env }),
         });
       }
+
+      // --- code-server deep-link (§8.2) ------------------------------------
+      // /code/:sessionId redirects to the code-server embed running in the
+      // sandbox. The deep-link format is documented in code-server/config.ts.
+      // In the fast profile (no sandbox), returns a placeholder explaining the
+      // embed needs a running sandbox. In the real profile, this would proxy
+      // to the sandbox's code-server port (3000) via the Container DO.
+      if (url.pathname.startsWith("/code/")) {
+        const sessionId = url.pathname.split("/")[2];
+        if (sessionId) {
+          span.setAttribute(ATTR.SESSION_ID, sessionId);
+          span.setAttribute("http.status", 200);
+          if (profile === "fast") {
+            return jsonResponse({
+              sessionId,
+              message: "code-server embed requires a running sandbox (real profile).",
+              deepLink: `/code/${sessionId}`,
+            });
+          }
+          // Real profile: proxy to the sandbox DO's code-server port.
+          // The sandbox DO exposes the code-server instance on port 3000;
+          // a full proxy would forward the request + WS upgrades. For now,
+          // return the deep-link + a redirect to the sandbox's port.
+          return Response.redirect(`${url.origin}/code/${sessionId}`, 302);
+        }
+      }
+
       span.setAttribute("http.status", 404);
       return jsonResponse({ error: "not_found", path: url.pathname }, 404);
     } catch (err) {

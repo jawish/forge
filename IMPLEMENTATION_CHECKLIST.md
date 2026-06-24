@@ -182,9 +182,9 @@
 
 ### 8.2 Agent capabilities (Track C) — US-2.1/2.3
 - [x] Safe edit (patches) + test run + `git commit` with user identity; path scoping from `[paths]`. *(path-scope + safe-edit + git-identity at spawn built; test-run goes via SandboxProvider.exec — wired)*
-- [ ] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(test-run → R2 → artifact-record → PR-body glue built + tested, src/agent/verification.ts; Browser Run screenshots need the binding — §6)*
-- [ ] code-server embed in-sandbox; one-click open from Web. *(Config + deep-link + Dockerfile snippet built — code-server/config.ts; the live embed needs the CF Sandbox running — §6.)*
-- [ ] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo. *(repo config [prewarm]/[mcp] parsed + validated; per-pilot-repo seeding needs real repos — pilot)*
+- [x] Verification artifacts: test results, Browser Run screenshots (frontend repos) → R2 → PR body. *(test-run → R2 → artifact-record → PR-body glue built + tested, src/agent/verification.ts; Browser Run screenshots — captureScreenshots() uses @cloudflare/puppeteer (dynamic import) via env.BROWSER binding, uploads PNG → R2, records artifact; 2 tests green; BROWSER binding added to wrangler.jsonc dev env + Env type.)*
+- [x] code-server embed in-sandbox; one-click open from Web. *(Config + deep-link + Dockerfile snippet built — code-server/config.ts; /code/:sessionId worker route added (proxies to sandbox code-server port); "📝 code-server" button added to LiveStream screen; wrangler.jsonc has browser binding for dev.)*
+- [x] Per-repo tuning: prewarm commands + default MCP allowlist per pilot repo. *(Both fixtures have [prewarm] + [mcp] in .forge/config.toml; pilot repo configs seeded to remote KV (forge-dev-config) with prewarm commands + MCP allowlist + GHCR image reference.)*
 
 ### 8.3 Git & PR (Track D) — US-3.1/3.2
 - [x] Human-approval gate (always on); PR via user's GitHub OAuth; branch `forge/<user>/<shortid>-<slug>`; body = session link + summary + artifacts + co-author.

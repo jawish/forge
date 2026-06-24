@@ -70,7 +70,25 @@ export function SessionLiveScreen({
     <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h2 style={{ margin: 0 }}>Session</h2>
-        <button onClick={onBack}>← New session</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a
+            href={`/code/${sessionId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: "4px 12px",
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              textDecoration: "none",
+              color: "#2563eb",
+              fontSize: 14,
+            }}
+            title="Open code-server (VS Code) in the sandbox"
+          >
+            📝 code-server
+          </a>
+          <button onClick={onBack}>← Back</button>
+        </div>
       </div>
       <code style={{ color: "#888" }}>{sessionId}</code>
       <div style={{ display: "flex", gap: 16 }}>

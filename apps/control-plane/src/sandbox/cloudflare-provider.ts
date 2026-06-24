@@ -46,9 +46,11 @@ export interface CloudflareSandboxConfig {
  */
 export class CloudflareSandboxProvider implements SandboxProvider {
   private readonly cfg: CloudflareSandboxConfig;
-  private readonly sandboxDO: DurableObjectNamespace;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private readonly sandboxDO: any;
 
-  constructor(cfg: CloudflareSandboxConfig, sandboxDO: DurableObjectNamespace) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(cfg: CloudflareSandboxConfig, sandboxDO: any) {
     this.cfg = cfg;
     this.sandboxDO = sandboxDO;
   }

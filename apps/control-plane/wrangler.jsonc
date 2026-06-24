@@ -81,6 +81,7 @@
         "producers": [{ "binding": "WORK_QUEUE", "queue": "forge-dev-work" }],
         "consumers": [{ "queue": "forge-dev-work", "max_batch_size": 5 }],
       },
+      "browser": { "binding": "BROWSER" },
     },
     "staging": {
       "name": "forge-control-plane-staging",

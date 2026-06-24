@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@cloudflare/agents": "0.0.16",
+    "@cloudflare/puppeteer": "^1.1.0",
     "@forge/domain": "workspace:*",
     "@slack/web-api": "7.17.0",
     "@trpc/server": "11.18.0",

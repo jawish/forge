@@ -24,6 +24,8 @@ export interface Env {
   WORKER_ORIGIN?: string;
   // The sandbox DO namespace (Container-backed, for the real profile, §6.3).
   SANDBOX_DO?: DurableObjectNamespace;
+  // Browser Rendering binding (for frontend repo screenshots, §8.2).
+  BROWSER?: Fetcher;
   // Durable Object: per-session hot state (docs/12 §2).
   SESSION_DO: DurableObjectNamespace;
   // D1: control-plane OLTP index (docs/12 §3).
