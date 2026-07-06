@@ -15,11 +15,11 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
-    "oxfmt": "0.56.0",
-    "oxlint": "1.71.0",
-    "prettier": "3.6.2",
+    "oxfmt": "0.57.0",
+    "oxlint": "1.72.0",
+    "prettier": "3.9.4",
     "typescript": "7.0.1-rc",
-    "wrangler": "^4.103.0"
+    "wrangler": "^4.107.0"
   },
   "engines": {
     "node": "22"
