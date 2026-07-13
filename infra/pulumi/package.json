@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@pulumi/cloudflare": "6.17.0",
-    "@pulumi/pulumi": "3.247.0"
+    "@pulumi/pulumi": "3.251.0"
   },
   "devDependencies": {
     "@types/node": "22.10.0",
-    "typescript": "7.0.1-rc"
+    "typescript": "7.0.2"
   }
 }
