@@ -24,20 +24,20 @@
   "dependencies": {
     "@cloudflare/agents": "0.0.16",
     "@cloudflare/containers": "^0.3.7",
-    "@cloudflare/puppeteer": "^1.1.0",
-    "@cloudflare/sandbox": "^0.12.1",
+    "@cloudflare/puppeteer": "^1.4.0",
+    "@cloudflare/sandbox": "^0.12.9",
     "@forge/domain": "workspace:*",
     "@slack/web-api": "7.17.0",
     "@trpc/server": "11.18.0",
-    "zod": "4.4.3"
+    "zod": "4.5.2"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.16.18",
+    "@cloudflare/vitest-pool-workers": "0.22.0",
     "@cloudflare/workers-types": "4.20260623.1",
     "@types/node": "22.10.0",
-    "miniflare": "4.20260617.1",
-    "typescript": "7.0.1-rc",
-    "vitest": "4.1.9",
-    "wrangler": "4.103.0"
+    "miniflare": "4.20260730.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.127.1"
   }
 }
