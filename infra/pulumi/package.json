@@ -10,11 +10,11 @@
     "test": "echo 'infra tests: pulumi preview validate in CI' && exit 0"
   },
   "dependencies": {
-    "@pulumi/cloudflare": "6.17.0",
-    "@pulumi/pulumi": "3.247.0"
+    "@pulumi/cloudflare": "6.20.0",
+    "@pulumi/pulumi": "3.261.0"
   },
   "devDependencies": {
     "@types/node": "22.10.0",
-    "typescript": "7.0.1-rc"
+    "typescript": "7.0.2"
   }
 }
