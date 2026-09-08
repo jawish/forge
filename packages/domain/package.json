@@ -24,11 +24,11 @@
     "test:e2e": "echo 'no e2e in domain package' && exit 0"
   },
   "dependencies": {
-    "smol-toml": "1.7.0",
-    "zod": "4.4.3"
+    "smol-toml": "1.8.0",
+    "zod": "4.5.4"
   },
   "devDependencies": {
-    "typescript": "7.0.1-rc",
+    "typescript": "7.0.2",
     "vitest": "4.1.9"
   }
 }
